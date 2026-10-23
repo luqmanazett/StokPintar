@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { BrowserRouter, NavLink, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import {
   ClipboardList,
@@ -15,6 +15,7 @@ import {
   ClipboardCheck,
   UserPlus,
   ChartNoAxesCombined,
+  ShieldCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ import Suppliers from "./pages/Suppliers";
 import PurchaseOrders from "./pages/PurchaseOrders";
 import StockOpnames from "./pages/StockOpnames";
 import Finance from "./pages/Finance";
+const Integrity = lazy(() => import("./pages/Integrity"));
 import NotFound from "./pages/NotFound";
 
 type Role = "ADMIN" | "MANAJER" | "GUDANG" | "KASIR";
@@ -62,6 +64,7 @@ const navigation: NavigationItem[] = [
   { label: "Pembelian", href: "/purchases", icon: PackageCheck, roles: ["ADMIN", "MANAJER", "GUDANG"] },
   { label: "Stok opname", href: "/stock-opnames", icon: ClipboardCheck, roles: ["ADMIN", "MANAJER", "GUDANG"] },
   { label: "Keuangan", href: "/finance", icon: ChartNoAxesCombined, roles: ["ADMIN", "MANAJER"] },
+  { label: "Integritas data", href: "/integrity", icon: ShieldCheck, roles: ["ADMIN"] },
 ];
 
 const pageTitles: Record<string, string> = {
@@ -77,6 +80,7 @@ const pageTitles: Record<string, string> = {
   "/purchases": "Pembelian",
   "/stock-opnames": "Stok opname",
   "/finance": "Keuangan",
+  "/integrity": "Integritas data",
 };
 
 function PageTitle() {
@@ -227,6 +231,7 @@ export default function App() {
           <Route path="/purchases" element={<RoleRoute roles={["ADMIN", "MANAJER", "GUDANG"]}><PurchaseOrders /></RoleRoute>} />
           <Route path="/stock-opnames" element={<RoleRoute roles={["ADMIN", "MANAJER", "GUDANG"]}><StockOpnames /></RoleRoute>} />
           <Route path="/finance" element={<RoleRoute roles={["ADMIN", "MANAJER"]}><Finance /></RoleRoute>} />
+          <Route path="/integrity" element={<RoleRoute roles={["ADMIN"]}><Suspense fallback={<div className="text-sm text-muted-foreground">Memuat pemeriksaan integritas...</div>}><Integrity /></Suspense></RoleRoute>} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>

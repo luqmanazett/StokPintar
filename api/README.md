@@ -32,3 +32,23 @@ ADMIN dan MANAJER mencatat retur parsial melalui `POST /api/sales/:id/returns` d
 ## Pengeluaran dan laba-rugi
 
 ADMIN dan MANAJER dapat mencatat pengeluaran melalui `POST /api/expenses` dan melihat daftar dengan filter tanggal di `GET /api/expenses`. Laporan `GET /api/reports/profit-loss` menghitung pendapatan bersih setelah refund, HPP bersih setelah barang retur, total pengeluaran, serta laba bersih untuk rentang tanggal yang diminta. Halaman Keuangan menyediakan unduhan CSV untuk ringkasan laba-rugi dan daftar pengeluaran. Pencatatan pengeluaran disimpan bersama jejak audit.
+
+## Data demo dan integritas
+
+Seed demo mengisi akun empat role, produk/stok contoh, satu PO draft, satu pengeluaran, dan satu transaksi contoh. Seed hanya boleh dijalankan secara eksplisit terhadap database bernama `stokpintar` atau `stokpintar_demo`, bukan pada production. Jalankan dari folder `api/` setelah memastikan `DATABASE_URL` menunjuk ke database lokal yang benar:
+
+```powershell
+$env:SEED_DEMO_CONFIRM = "YES"
+npm run db:seed
+Remove-Item Env:SEED_DEMO_CONFIRM
+```
+
+Akun contoh: `admin@stokpintar.test` / `admin123`, `manajer@stokpintar.test` / `manajer123`, `gudang@stokpintar.test` / `gudang123`, dan `kasir@stokpintar.test` / `kasir123`. Ganti kata sandi sebelum memakai data di luar demo.
+
+Pemeriksaan integritas hanya membaca data dan tersedia untuk ADMIN melalui menu **Integritas data**, endpoint `GET /api/integrity/check`, atau CLI:
+
+```sh
+npm run db:check
+```
+
+CLI mengembalikan status gagal bila ada saldo stok negatif atau hubungan/perhitungan penjualan, retur, PO, opname, maupun pengeluaran yang tidak konsisten.

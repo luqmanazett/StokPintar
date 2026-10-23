@@ -1,6 +1,6 @@
 # Penjelasan Modul StokPintar
 
-Dokumen ini menjelaskan modul M0 sampai M5 dengan bahasa sederhana. Setiap bagian merangkum tujuan bisnis, tabel dan hubungannya, cara fitur berjalan, bagian kode penting, penanganan kegagalan, serta contoh pertanyaan wawancara.
+Dokumen ini menjelaskan modul M0 sampai M6 dengan bahasa sederhana. Setiap bagian merangkum tujuan bisnis, tabel dan hubungannya, cara fitur berjalan, bagian kode penting, penanganan kegagalan, serta contoh pertanyaan wawancara.
 
 > Setelah modul berikutnya selesai, tambahkan bagian baru dengan enam subbagian yang sama. Sesuaikan penjelasan dengan kode dan tes yang benar-benar dibuat.
 
@@ -287,6 +287,54 @@ Input kategori, jumlah, tanggal, dan rentang filter divalidasi. Jumlah harus ber
 3. **Mengapa ekspor memakai CSV?**  
    CSV sederhana, dapat dibuka di Excel dan aplikasi spreadsheet lain, dan tidak memerlukan dependensi tambahan.
 
+## M6 — Data demo dan pemeriksaan integritas
+
+### 1. Masalah bisnis yang diselesaikan
+
+Pengembang atau pemilik toko memerlukan data contoh untuk mencoba alur aplikasi, dan cara untuk menemukan catatan yang tidak konsisten sebelum dipakai membuat keputusan. M6 menyediakan seed demo yang bisa dijalankan ulang tanpa menggandakan contoh data, serta pemeriksaan baca-saja untuk saldo stok dan hubungan transaksi.
+
+### 2. Tabel dan relasinya
+
+Seed menyiapkan data pada tabel yang sudah ada, bukan membuat tabel baru:
+
+- `User` berisi akun demo ADMIN, MANAJER, GUDANG, dan KASIR.
+- `Category` terhubung ke `Product`; produk mempunyai saldo dari `StockMovement`.
+- `Supplier` terhubung ke contoh `PurchaseOrder`, yang memiliki `PurchaseOrderItem`.
+- `Expense` terhubung ke pengguna pencatat.
+- `Sale` terhubung ke `SaleItem`, kasir, `StockMovement`, dan `AuditLog`.
+
+Pemeriksaan integritas membaca produk dan ledger, penjualan beserta retur/void, purchase order beserta penerimaan, opname, dan pengeluaran. Fitur pemeriksaan tidak menulis atau memperbaiki data.
+
+### 3. Alur langkah demi langkah saat fitur dipakai
+
+1. Untuk mengisi data demo, pengguna mengatur `SEED_DEMO_CONFIRM=YES`, memastikan database adalah `stokpintar` atau `stokpintar_demo`, lalu menjalankan `npm run db:seed` dari folder `api`.
+2. Seed membuat akun demo, kategori dan produk contoh, saldo awal jika produk belum memiliki pergerakan stok, satu PO draft, satu pengeluaran, dan satu transaksi contoh bila stok mencukupi.
+3. Seed menggunakan email, SKU, nomor PO, dan penanda data tetap. Saat dijalankan ulang, data yang sudah ada dipakai kembali dan tidak menambah transaksi contoh atau saldo stok awal berulang.
+4. Admin dapat membuka menu **Integritas data** atau menjalankan `npm run db:check` untuk memeriksa konsistensi database.
+5. Hasil pemeriksaan menunjukkan jumlah data yang diperiksa dan masalah yang ditemukan. CLI memberi kode keluar gagal jika ada masalah; endpoint admin mengembalikan hasil yang sama untuk ditampilkan di web.
+
+### 4. Bagian kode yang paling penting
+
+- `api/prisma/seed.ts`, fungsi `seedDemo()` — membuat akun dan fixture demo dengan pola idempoten.
+- `api/prisma/seed.ts`, fungsi `assertDemoDatabase()` — menolak seed tanpa konfirmasi, pada production, atau pada database yang tidak diizinkan.
+- `api/src/services/integrity.ts`, fungsi `runIntegrityChecks()` — memeriksa saldo stok, total/movement penjualan, PO, opname, dan pengeluaran.
+- `api/src/routes/integrity.ts`, route `GET /check` — menyediakan pemeriksaan hanya untuk ADMIN.
+- `api/scripts/check-integrity.ts` — menjalankan pemeriksaan melalui terminal tanpa mengubah database.
+- `web/src/pages/Integrity.tsx` — menampilkan status dan rincian temuan untuk admin.
+
+### 5. Apa yang terjadi kalau ada yang gagal di tengah
+
+Seed berhenti sebelum menulis jika konfirmasi tidak diberikan, aplikasi berjalan dalam mode production, atau nama database tidak diizinkan. Jika pembuatan fixture gagal, error ditampilkan; data yang berhasil dibuat sebelumnya tetap tersimpan karena seed melengkapi banyak fixture secara idempoten, bukan menghapus database. Pemeriksaan integritas bersifat baca-saja. Jika kueri pemeriksaan gagal, endpoint/CLI melaporkan kegagalan; jika ditemukan ketidaksesuaian, CLI keluar dengan status gagal dan web menampilkan masalah untuk ditinjau. Pemeriksaan tidak otomatis mengubah stok atau transaksi.
+
+### 6. Pertanyaan interviewer dan jawabannya
+
+1. **Apa arti seed yang idempoten?**
+   Jika dijalankan berulang, seed tidak membuat salinan baru dari data demo atau menambahkan saldo stok awal lagi.
+2. **Mengapa seed memerlukan konfirmasi dan membatasi nama database?**
+   Karena seed menulis data contoh. Konfirmasi dan pembatasan database membantu mencegah data demo masuk ke database yang salah.
+3. **Apakah pemeriksaan integritas memperbaiki data secara otomatis?**
+   Tidak. Pemeriksaan hanya melaporkan ketidaksesuaian agar admin dapat menyelidikinya tanpa perubahan diam-diam.
+
 ## Alur kerja berdasarkan role
 
 Role menentukan pekerjaan harian pengguna. Menu di frontend membantu menampilkan fitur yang relevan, sementara API tetap memeriksa izin setiap kali ada request.
@@ -300,6 +348,7 @@ Role menentukan pekerjaan harian pengguna. Menu di frontend membantu menampilkan
 5. Membuat opname, memasukkan hitungan bila perlu, lalu memfinalisasinya.
 6. Membuka log audit untuk meninjau siapa yang melakukan perubahan.
 7. Mencatat pengeluaran toko dan mengekspor laporan keuangan.
+8. Menjalankan pemeriksaan integritas data.
 
 **Batas penting:** tindakan admin tetap mengikuti validasi bisnis. Contohnya, transaksi yang sudah memiliki retur tidak dapat di-void.
 

@@ -9,7 +9,9 @@
     "start": "node dist/index.js",
     "test": "node scripts/with-test-db.cjs vitest run",
     "test:watch": "node scripts/with-test-db.cjs vitest",
-    "test:db:deploy": "node scripts/with-test-db.cjs prisma migrate deploy"
+    "test:db:deploy": "node scripts/with-test-db.cjs prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "db:check": "tsx scripts/check-integrity.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
