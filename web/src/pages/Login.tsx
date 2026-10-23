@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
+import { toast } from "sonner";
 import { Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,10 +12,20 @@ export default function Login() {
   const [email, setEmail] = useState("admin@stokpintar.test");
   const [password, setPassword] = useState("admin123");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (sessionStorage.getItem("stokpintar-session-ended") === "true") {
+      sessionStorage.removeItem("stokpintar-session-ended");
+      toast.error("Sesi berakhir");
+    }
+  }, []);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    setError("");
+    setIsLoading(true);
     try {
       const data = await api<{ token: string; user: object }>("/auth/login", {
         method: "POST",
@@ -25,6 +36,8 @@ export default function Login() {
       navigate("/");
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -50,7 +63,9 @@ export default function Login() {
             <Label htmlFor="password">Kata sandi</Label>
             <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Masukkan kata sandi" />
           </div>
-          <Button type="submit" className="w-full">Masuk</Button>
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? "Memproses..." : "Masuk"}
+          </Button>
         </form>
       </Card>
     </div>

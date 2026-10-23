@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { api, rupiah } from "../api";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type Product = { id: number; name: string; sellPrice: number; stock: number };
 type Line = { product: Product; qty: number };
@@ -14,15 +16,27 @@ export default function Cashier() {
   const [cart, setCart] = useState<Line[]>([]);
   const [discount, setDiscount] = useState(0);
   const [payment, setPayment] = useState("CASH");
-  const [message, setMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [error, setError] = useState("");
 
-  async function load() {
-    setProducts(await api<Product[]>("/products?search=" + encodeURIComponent(search)));
-  }
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      setProducts(await api<Product[]>("/products?search=" + encodeURIComponent(search)));
+      setError("");
+    } catch (e) {
+      const message = (e as Error).message;
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [search]);
 
   useEffect(() => {
-    load();
-  }, [search]);
+    void load();
+  }, [load]);
 
   function add(product: Product) {
     setCart((c) => {
@@ -40,6 +54,7 @@ export default function Cashier() {
   const total = Math.max(subtotal - discount, 0);
 
   async function checkout() {
+    setIsCheckingOut(true);
     try {
       await api("/sales", {
         method: "POST",
@@ -51,10 +66,12 @@ export default function Cashier() {
       });
       setCart([]);
       setDiscount(0);
-      setMessage("Transaksi berhasil");
-      load();
+      toast.success("Transaksi berhasil");
+      await load();
     } catch (e) {
-      setMessage((e as Error).message);
+      toast.error((e as Error).message);
+    } finally {
+      setIsCheckingOut(false);
     }
   }
 
@@ -65,14 +82,32 @@ export default function Cashier() {
         <Card className="space-y-3 p-4">
           <h2 className="text-sm font-semibold text-slate-700">Pilih produk</h2>
           <Input placeholder="Cari produk" value={search} onChange={(e) => setSearch(e.target.value)} />
-          {products.map((p) => (
-            <Button key={p.id} variant="outline" onClick={() => add(p)} disabled={p.stock <= 0} className="h-auto w-full justify-between py-3 text-left">
-              <span>
-                {p.name} <span className="text-xs text-muted-foreground">(stok {p.stock})</span>
-              </span>
-              <span>{rupiah(p.sellPrice)}</span>
-            </Button>
-          ))}
+          {error && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">
+              <span>Gagal memuat produk: {error}</span>
+              <Button variant="outline" size="sm" onClick={() => void load()}>Coba lagi</Button>
+            </div>
+          )}
+          {isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : products.length === 0 ? (
+            <p className="rounded-md bg-slate-50 p-4 text-sm text-muted-foreground">
+              {error ? "Produk belum dapat ditampilkan." : "Belum ada produk yang cocok dengan pencarian."}
+            </p>
+          ) : (
+            products.map((p) => (
+              <Button key={p.id} variant="outline" onClick={() => add(p)} disabled={p.stock <= 0} className="h-auto w-full justify-between py-3 text-left">
+                <span>
+                  {p.name} <span className="text-xs text-muted-foreground">(stok {p.stock})</span>
+                </span>
+                <span>{rupiah(p.sellPrice)}</span>
+              </Button>
+            ))
+          )}
         </Card>
 
         <Card className="space-y-3 p-5">
@@ -99,10 +134,9 @@ export default function Cashier() {
             <option value="QRIS">QRIS</option>
           </select>
           <p className="pt-2 text-xl font-semibold">Total: {rupiah(total)}</p>
-          <Button onClick={checkout} disabled={cart.length === 0} className="w-full bg-emerald-600 hover:bg-emerald-700">
-            Bayar
+          <Button onClick={checkout} disabled={cart.length === 0 || isCheckingOut} className="w-full bg-emerald-600 hover:bg-emerald-700">
+            {isCheckingOut ? "Memproses pembayaran..." : "Bayar"}
           </Button>
-          {message && <p className="text-sm">{message}</p>}
         </Card>
       </div>
     </div>
