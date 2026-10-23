@@ -16,6 +16,7 @@ import stockOpnameRoutes from "./routes/stock-opnames";
 import saleReturnRoutes from "./routes/sale-returns";
 import expenseRoutes from "./routes/expenses";
 import integrityRoutes from "./routes/integrity";
+import notificationRoutes from "./routes/notifications";
 
 export function createApp() {
   const app = express();
@@ -35,6 +36,7 @@ export function createApp() {
   app.use("/api/sales", saleReturnRoutes);
   app.use("/api/expenses", expenseRoutes);
   app.use("/api/integrity", integrityRoutes);
+  app.use("/api/notifications", notificationRoutes);
   app.use("/api/reports", reportRoutes);
   app.use("/api/audit-logs", auditLogRoutes);
   app.use("/api/suppliers", supplierRoutes);

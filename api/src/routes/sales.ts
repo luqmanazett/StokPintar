@@ -6,6 +6,7 @@ import { AppError } from "../middlewares/error";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { getStock } from "../services/stock";
 import { audit } from "../services/audit";
+import { notifyTelegramAfterCommit } from "../services/telegram";
 
 const router = Router();
 
@@ -33,7 +34,7 @@ router.post("/", requireAuth, requireRole("ADMIN", "KASIR"), async (req, res) =>
 
   const ids = [...qtyByProduct.keys()];
 
-  const sale = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // kunci baris produk supaya dua kasir tidak bisa menjual stok terakhir yang sama
     await tx.$queryRaw`SELECT id FROM "Product" WHERE id IN (${Prisma.join(ids)}) FOR UPDATE`;
 
@@ -42,6 +43,7 @@ router.post("/", requireAuth, requireRole("ADMIN", "KASIR"), async (req, res) =>
 
     let subtotal = 0;
     const items = [];
+    const lowStockAlerts: string[] = [];
 
     for (const product of products) {
       const quantity = qtyByProduct.get(product.id)!;
@@ -49,6 +51,13 @@ router.post("/", requireAuth, requireRole("ADMIN", "KASIR"), async (req, res) =>
 
       if (stock < quantity) {
         throw new AppError(400, `Stok ${product.name} tidak cukup (sisa ${stock})`);
+      }
+
+      const remainingStock = stock - quantity;
+      if (stock > product.minStock && remainingStock <= product.minStock) {
+        lowStockAlerts.push(
+          `Stok menipis: ${product.name} tersisa ${remainingStock} (batas minimum ${product.minStock}).`,
+        );
       }
 
       subtotal += quantity * product.sellPrice;
@@ -104,10 +113,25 @@ router.post("/", requireAuth, requireRole("ADMIN", "KASIR"), async (req, res) =>
       ip: req.ip,
     });
 
-    return created;
+    return { sale: created, lowStockAlerts };
   });
 
-  res.status(201).json(sale);
+  const notifications = [
+    {
+      text: `Penjualan #${result.sale.id} berhasil. Total ${new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        maximumFractionDigits: 0,
+      }).format(result.sale.total)}, metode ${result.sale.paymentMethod}.`,
+      event: "penjualan",
+    },
+    ...result.lowStockAlerts.map((text) => ({ text, event: "stok menipis" })),
+  ];
+  await Promise.all(
+    notifications.map(({ text, event }) => notifyTelegramAfterCommit(text, event)),
+  );
+
+  res.status(201).json(result.sale);
 });
 
 router.get("/", requireAuth, requireRole("ADMIN", "MANAJER", "KASIR"), async (req, res) => {

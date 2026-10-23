@@ -6,6 +6,7 @@ import { AppError } from "../middlewares/error";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { audit } from "../services/audit";
 import { getStock } from "../services/stock";
+import { notifyTelegramAfterCommit } from "../services/telegram";
 
 const router = Router();
 const createSchema = z.object({
@@ -170,13 +171,18 @@ router.post("/:id/finalize", requireAuth, requireRole("ADMIN", "MANAJER"), async
 
     const warnings: { productId: number; productName: string; snapshotQty: number; currentQty: number; countedQty: number }[] = [];
     const changes: { productId: number; change: number; note: string }[] = [];
+    const lowStockAlerts: string[] = [];
     for (const item of sortedItems) {
       const currentQty = await getStock(tx, item.productId);
       const countedQty = item.countedQty!;
+      const product = await tx.product.findUniqueOrThrow({
+        where: { id: item.productId },
+        select: { name: true, minStock: true },
+      });
       if (currentQty !== item.systemQty) {
         warnings.push({
           productId: item.productId,
-          productName: (await tx.product.findUniqueOrThrow({ where: { id: item.productId }, select: { name: true } })).name,
+          productName: product.name,
           snapshotQty: item.systemQty,
           currentQty,
           countedQty,
@@ -184,8 +190,12 @@ router.post("/:id/finalize", requireAuth, requireRole("ADMIN", "MANAJER"), async
       }
       const difference = countedQty - currentQty;
       await tx.stockOpnameItem.update({ where: { id: item.id }, data: { difference } });
+      if (currentQty > product.minStock && countedQty <= product.minStock) {
+        lowStockAlerts.push(
+          `Stok menipis setelah opname: ${product.name} tersisa ${countedQty} (batas minimum ${product.minStock}).`,
+        );
+      }
       if (difference !== 0) {
-        const product = await tx.product.findUniqueOrThrow({ where: { id: item.productId }, select: { name: true } });
         changes.push({
           productId: item.productId,
           change: difference,
@@ -223,9 +233,14 @@ router.post("/:id/finalize", requireAuth, requireRole("ADMIN", "MANAJER"), async
       },
       ip: req.ip,
     });
-    return { opname: finalized, warnings };
+    return { opname: finalized, warnings, lowStockAlerts };
   });
-  res.json(result);
+  await Promise.all(
+    result.lowStockAlerts.map((message) =>
+      notifyTelegramAfterCommit(message, "stok menipis setelah opname"),
+    ),
+  );
+  res.json({ opname: result.opname, warnings: result.warnings });
 });
 
 export default router;

@@ -5,6 +5,7 @@ import { AppError } from "../middlewares/error";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { getStock } from "../services/stock";
 import { audit } from "../services/audit";
+import { notifyTelegramAfterCommit } from "../services/telegram";
 
 const router = Router();
 
@@ -49,7 +50,7 @@ router.post("/in", requireAuth, requireRole("ADMIN", "GUDANG"), async (req, res)
 router.post("/adjust", requireAuth, requireRole("ADMIN", "GUDANG"), async (req, res) => {
   const { productId, change, note } = adjustSchema.parse(req.body);
 
-  const movement = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM "Product" WHERE id = ${productId} FOR UPDATE`;
     const product = await tx.product.findFirst({ where: { id: productId, isActive: true } });
     if (!product) throw new AppError(404, "Produk tidak ditemukan");
@@ -74,9 +75,16 @@ router.post("/adjust", requireAuth, requireRole("ADMIN", "GUDANG"), async (req, 
       after: { productId, stock: current + change, change, note, type: created.type },
       ip: req.ip,
     });
-    return created;
+    return {
+      movement: created,
+      alert:
+        current > product.minStock && current + change <= product.minStock
+          ? `Stok menipis: ${product.name} tersisa ${current + change} (batas minimum ${product.minStock}).`
+          : null,
+    };
   });
-  res.status(201).json(movement);
+  if (result.alert) await notifyTelegramAfterCommit(result.alert, "stok menipis");
+  res.status(201).json(result.movement);
 });
 
 router.get("/low", requireAuth, async (req, res) => {

@@ -381,6 +381,48 @@ Rentang tanggal yang terbalik ditolak, dan role selain ADMIN/MANAJER tidak dapat
 3. **Apakah M7 menambahkan tabel baru?**
    Tidak. Analitik mengolah relasi penjualan, item, retur, kasir, dan pengeluaran yang sudah disimpan modul sebelumnya.
 
+## M8 — Notifikasi Telegram
+
+### 1. Masalah bisnis yang diselesaikan
+
+Pemilik toko tidak selalu membuka aplikasi untuk mengetahui ada transaksi baru atau stok yang mulai menipis. M8 mengirim ringkasan penjualan dan peringatan saat stok turun melewati batas minimum ke ruang chat Telegram yang telah dikonfigurasi.
+
+### 2. Tabel dan relasinya
+
+M8 tidak menambah tabel. Informasi penjualan dibaca dari `Sale`, sedangkan stok dihitung dari `StockMovement` dan batasnya berasal dari `Product.minStock`. Token bot dan ID chat disimpan sebagai environment server, bukan di database.
+
+### 3. Alur langkah demi langkah saat fitur dipakai
+
+1. Pengelola server membuat bot Telegram dan mengatur `TELEGRAM_BOT_TOKEN` serta `TELEGRAM_CHAT_ID`.
+2. ADMIN dapat mengirim pesan percobaan melalui `POST /api/notifications/telegram/test`.
+3. Saat kasir membuat penjualan, API menyimpan transaksi dan pengurangan ledger stok dalam satu transaksi database.
+4. Setelah transaksi berhasil, API mengirim ringkasan transaksi ke Telegram.
+5. Jika penjualan, penyesuaian, atau hasil opname membuat jumlah melewati batas minimum ke bawah, API mengirim peringatan stok produk tersebut.
+6. Jika pengaturan Telegram tidak tersedia, proses transaksi berjalan seperti biasa tanpa mengirim pesan.
+
+### 4. Bagian kode yang paling penting
+
+- `api/src/services/telegram.ts`, fungsi `sendTelegramMessage()` — mengirim pesan melalui Bot API dengan batas waktu dan pesan error yang tidak membocorkan token.
+- `api/src/services/telegram.ts`, fungsi `notifyTelegramAfterCommit()` — mencatat kegagalan pengiriman tanpa membatalkan transaksi bisnis yang sudah tersimpan.
+- `api/src/routes/notifications.ts`, route `POST /telegram/test` — menguji konfigurasi dan hanya mengizinkan ADMIN.
+- `api/src/routes/sales.ts`, route `POST /` — membuat notifikasi transaksi dan mendeteksi stok yang melewati batas minimum.
+- `api/src/routes/stock.ts`, route `POST /adjust` — mendeteksi penyesuaian stok yang membuat stok melewati batas minimum.
+- `api/src/routes/stock-opnames.ts`, route `POST /:id/finalize` — memeriksa hasil stok fisik dan mengirim peringatan bila stok melewati batas minimum.
+- `api/tests/telegram.test.ts` — menguji endpoint dan kegagalan pengiriman dengan fetch tiruan, tanpa menghubungi Telegram sungguhan.
+
+### 5. Apa yang terjadi kalau ada yang gagal di tengah
+
+Jika data atau transaksi gagal divalidasi, notifikasi tidak dikirim karena perubahan database belum berhasil. Jika Telegram menolak pesan, koneksi terputus, atau request melewati batas waktu, transaksi tetap berhasil dan API mencatat kegagalan pengiriman pada log server. Endpoint tes memberi respons error agar ADMIN mengetahui bahwa konfigurasi atau koneksi perlu diperiksa. Token bot tidak dikirim ke frontend dan tidak ditulis ke log aplikasi.
+
+### 6. Pertanyaan interviewer dan jawabannya
+
+1. **Mengapa notifikasi dikirim setelah transaksi database selesai?**
+   Agar pesan tidak menyatakan transaksi berhasil sebelum data benar-benar tersimpan.
+2. **Apa akibatnya jika Telegram sedang mati?**
+   Penjualan atau perubahan stok tidak dibatalkan. Kegagalan pesan dicatat agar pengelola dapat memeriksa log server.
+3. **Bagaimana token bot diamankan?**
+   Token dan chat ID hanya dibaca dari environment backend, tidak disimpan di source code, frontend, atau tabel database.
+
 ## Alur kerja berdasarkan role
 
 Role menentukan pekerjaan harian pengguna. Menu di frontend membantu menampilkan fitur yang relevan, sementara API tetap memeriksa izin setiap kali ada request.
