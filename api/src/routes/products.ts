@@ -18,7 +18,7 @@ const productSchema = z.object({
 router.get("/", requireAuth, async (req, res) => {
   const search = `%${String(req.query.search ?? "")}%`;
   const rows = await prisma.$queryRaw`
-    SELECT p.id, p.sku, p.name, c.name AS category,
+    SELECT p.id, p.sku, p.name, p."categoryId", c.name AS category,
     p."costPrice", p."sellPrice", p."minStock",
     COALESCE(SUM(m.change), 0)::int AS stock
     FROM "Product" p
