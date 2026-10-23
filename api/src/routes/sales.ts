@@ -126,7 +126,7 @@ router.get("/", requireAuth, requireRole("ADMIN", "MANAJER", "KASIR"), async (re
       take: 100,
       include: {
         cashier: { select: { name: true } },
-        items: { include: { product: { select: { name: true } } } },
+        items: { include: { product: { select: { name: true } }, returns: { select: { quantity: true, refundAmount: true } } } },
       },
     }),
   );
@@ -140,6 +140,9 @@ router.post("/:id/void", requireAuth, requireRole("ADMIN", "MANAJER"), async (re
     const sale = await tx.sale.findUnique({ where: { id }, include: { items: true } });
     if (!sale) throw new AppError(404, "Transaksi tidak ditemukan");
     if (sale.status === "VOIDED") throw new AppError(409, "Transaksi sudah didatalkan");
+    if (await tx.saleReturn.count({ where: { saleId: id } }) > 0) {
+      throw new AppError(409, "Transaksi yang sudah memiliki retur tidak dapat dibatalkan");
+    }
 
     await tx.sale.update({ where: { id }, data: { status: "VOIDED" } });
 

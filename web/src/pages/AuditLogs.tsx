@@ -51,6 +51,7 @@ const entityLabels: Record<string, string> = {
   Supplier: "Pemasok",
   PurchaseOrder: "Pesanan pembelian",
   StockOpname: "Stok opname",
+  SaleReturn: "Retur penjualan",
 };
 
 export default function AuditLogs() {

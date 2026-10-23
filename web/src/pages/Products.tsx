@@ -72,6 +72,7 @@ const movementLabels: Record<string, string> = {
   VOID: "Pembatalan",
   PURCHASE: "Pembelian",
   OPNAME: "Stok opname",
+  SALE_RETURN: "Retur penjualan",
 };
 
 function validateProduct(form: ProductForm): FormErrors {

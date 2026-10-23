@@ -24,3 +24,7 @@ Pemasok dikelola melalui `/api/suppliers`. Siklus PO tersedia di `/api/purchase-
 ## Stok opname
 
 `/api/stock-opnames` membuat snapshot semua produk aktif atau satu kategori. Gudang mengisi hitungan fisik; ADMIN/MANAJER memfinalisasi dalam transaksi yang mengunci baris produk. Jika ledger berubah sejak snapshot, selisih dihitung dari stok terkini dan endpoint finalisasi mengembalikan daftar peringatan.
+
+## Retur penjualan
+
+ADMIN dan MANAJER mencatat retur parsial melalui `POST /api/sales/:id/returns` dengan alasan dan daftar `saleItemId`/jumlah. Sistem menolak retur melebihi sisa jumlah, mengembalikan stok melalui ledger, mengalokasikan diskon secara proporsional, dan menyimpan audit. Transaksi yang sudah memiliki retur tidak dapat dibatalkan agar stok tidak dikembalikan dua kali. Laporan pendapatan, laba, grafik harian, dan produk terlaris mengurangi refund serta HPP barang yang dikembalikan.

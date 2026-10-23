@@ -22,6 +22,7 @@ enum MovementType {
   VOID
   PURCHASE
   OPNAME
+  SALE_RETURN
 }
 
 enum PurchaseOrderStatus {
@@ -62,6 +63,7 @@ model User {
   purchaseOrders PurchaseOrder[] @relation("PurchaseOrderCreator")
   goodsReceipts  GoodsReceipt[]   @relation("GoodsReceiptCreator")
   stockOpnames   StockOpname[]    @relation("StockOpnameCreator")
+  saleReturns    SaleReturn[]     @relation("SaleReturnCreator")
 }
 
 model AuditLog {
@@ -119,6 +121,8 @@ model StockMovement {
   goodsReceipt GoodsReceipt? @relation(fields: [goodsReceiptId], references: [id])
   stockOpnameId Int?
   stockOpname StockOpname? @relation(fields: [stockOpnameId], references: [id])
+  saleReturnId Int?
+  saleReturn SaleReturn? @relation(fields: [saleReturnId], references: [id])
   createdAt   DateTime     @default(now())
 
   @@index([productId])
@@ -231,6 +235,7 @@ model Sale {
   createdAt     DateTime      @default(now())
   items         SaleItem[]
   movements     StockMovement[]
+  returns       SaleReturn[]
 
   @@index([createdAt])
 }
@@ -244,4 +249,32 @@ model SaleItem {
   quantity  Int
   unitPrice Int
   unitCost  Int
+  returns   SaleReturnItem[]
+}
+
+model SaleReturn {
+  id          Int              @id @default(autoincrement())
+  saleId      Int
+  sale        Sale             @relation(fields: [saleId], references: [id])
+  reason      String
+  totalRefund Int
+  createdById Int
+  createdBy   User             @relation("SaleReturnCreator", fields: [createdById], references: [id])
+  createdAt   DateTime         @default(now())
+  items       SaleReturnItem[]
+  movements   StockMovement[]
+
+  @@index([saleId, createdAt])
+}
+
+model SaleReturnItem {
+  id          Int       @id @default(autoincrement())
+  saleReturnId Int
+  saleReturn  SaleReturn @relation(fields: [saleReturnId], references: [id], onDelete: Cascade)
+  saleItemId  Int
+  saleItem    SaleItem   @relation(fields: [saleItemId], references: [id])
+  quantity    Int
+  refundAmount Int
+
+  @@unique([saleReturnId, saleItemId])
 }
