@@ -20,6 +20,15 @@ enum MovementType {
   ADJUSTMENT
   SALE
   VOID
+  PURCHASE
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  ORDERED
+  PARTIAL
+  RECEIVED
+  CANCELLED
 }
 
 enum PaymentMethod {
@@ -44,6 +53,8 @@ model User {
   sales        Sale[]
   movements    StockMovement[]
   auditLogs    AuditLog[]
+  purchaseOrders PurchaseOrder[] @relation("PurchaseOrderCreator")
+  goodsReceipts  GoodsReceipt[]   @relation("GoodsReceiptCreator")
 }
 
 model AuditLog {
@@ -81,6 +92,7 @@ model Product {
   createdAt  DateTime        @default(now())
   movements  StockMovement[]
   saleItems  SaleItem[]
+  purchaseOrderItems PurchaseOrderItem[]
 }
 
 model StockMovement {
@@ -94,9 +106,75 @@ model StockMovement {
   createdBy   User         @relation(fields: [createdById], references: [id])
   saleId      Int?
   sale        Sale?        @relation(fields: [saleId], references: [id])
+  goodsReceiptId Int?
+  goodsReceipt GoodsReceipt? @relation(fields: [goodsReceiptId], references: [id])
   createdAt   DateTime     @default(now())
 
   @@index([productId])
+}
+
+model Supplier {
+  id            Int             @id @default(autoincrement())
+  name          String
+  phone         String?
+  address       String?
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  purchaseOrders PurchaseOrder[]
+}
+
+model PurchaseOrder {
+  id          Int                @id @default(autoincrement())
+  orderNumber String             @unique
+  supplierId  Int
+  supplier    Supplier           @relation(fields: [supplierId], references: [id])
+  status      PurchaseOrderStatus @default(DRAFT)
+  notes       String?
+  createdById Int
+  createdBy   User               @relation("PurchaseOrderCreator", fields: [createdById], references: [id])
+  createdAt   DateTime           @default(now())
+  orderedAt   DateTime?
+  items       PurchaseOrderItem[]
+  receipts    GoodsReceipt[]
+
+  @@index([status, createdAt])
+}
+
+model PurchaseOrderItem {
+  id              Int           @id @default(autoincrement())
+  purchaseOrderId Int
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  productId       Int
+  product         Product       @relation(fields: [productId], references: [id])
+  qtyOrdered      Int
+  qtyReceived     Int           @default(0)
+  unitCost        Int
+  receiptItems    GoodsReceiptItem[]
+
+  @@unique([purchaseOrderId, productId])
+}
+
+model GoodsReceipt {
+  id              Int               @id @default(autoincrement())
+  purchaseOrderId Int
+  purchaseOrder   PurchaseOrder     @relation(fields: [purchaseOrderId], references: [id])
+  createdById     Int
+  createdBy       User              @relation("GoodsReceiptCreator", fields: [createdById], references: [id])
+  note            String?
+  createdAt       DateTime          @default(now())
+  items           GoodsReceiptItem[]
+  movements       StockMovement[]
+}
+
+model GoodsReceiptItem {
+  id                  Int              @id @default(autoincrement())
+  goodsReceiptId      Int
+  goodsReceipt        GoodsReceipt     @relation(fields: [goodsReceiptId], references: [id], onDelete: Cascade)
+  purchaseOrderItemId Int
+  purchaseOrderItem   PurchaseOrderItem @relation(fields: [purchaseOrderItemId], references: [id])
+  quantity            Int
+
+  @@unique([goodsReceiptId, purchaseOrderItemId])
 }
 
 model Sale {

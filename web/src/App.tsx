@@ -10,6 +10,8 @@ import {
   ShoppingCart,
   Store,
   ScrollText,
+  Truck,
+  PackageCheck,
   UserPlus,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -26,6 +28,8 @@ import Transactions from "./pages/Transactions";
 import Categories from "./pages/Categories";
 import CashierAccounts from "./pages/CashierAccounts";
 import AuditLogs from "./pages/AuditLogs";
+import Suppliers from "./pages/Suppliers";
+import PurchaseOrders from "./pages/PurchaseOrders";
 import NotFound from "./pages/NotFound";
 
 type Role = "ADMIN" | "MANAJER" | "GUDANG" | "KASIR";
@@ -50,6 +54,8 @@ const navigation: NavigationItem[] = [
   { label: "Kategori", href: "/categories", icon: FolderTree, roles: ["ADMIN"] },
   { label: "Akun", href: "/cashier-accounts", icon: UserPlus, roles: ["ADMIN"] },
   { label: "Log audit", href: "/audit-logs", icon: ScrollText, roles: ["ADMIN"] },
+  { label: "Pemasok", href: "/suppliers", icon: Truck, roles: ["ADMIN", "MANAJER"] },
+  { label: "Pembelian", href: "/purchases", icon: PackageCheck, roles: ["ADMIN", "MANAJER", "GUDANG"] },
 ];
 
 const pageTitles: Record<string, string> = {
@@ -61,6 +67,8 @@ const pageTitles: Record<string, string> = {
   "/categories": "Kategori",
   "/cashier-accounts": "Akun pengguna",
   "/audit-logs": "Log audit",
+  "/suppliers": "Pemasok",
+  "/purchases": "Pembelian",
 };
 
 function PageTitle() {
@@ -207,6 +215,8 @@ export default function App() {
           <Route path="/categories" element={<RoleRoute roles={["ADMIN"]}><Categories /></RoleRoute>} />
           <Route path="/cashier-accounts" element={<RoleRoute roles={["ADMIN"]}><CashierAccounts /></RoleRoute>} />
           <Route path="/audit-logs" element={<RoleRoute roles={["ADMIN"]}><AuditLogs /></RoleRoute>} />
+          <Route path="/suppliers" element={<RoleRoute roles={["ADMIN", "MANAJER"]}><Suppliers /></RoleRoute>} />
+          <Route path="/purchases" element={<RoleRoute roles={["ADMIN", "MANAJER", "GUDANG"]}><PurchaseOrders /></RoleRoute>} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>

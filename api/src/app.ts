@@ -10,6 +10,8 @@ import stockRoutes from "./routes/stock";
 import saleRoutes from "./routes/sales";
 import reportRoutes from "./routes/reports";
 import auditLogRoutes from "./routes/audit-logs";
+import supplierRoutes from "./routes/suppliers";
+import purchaseOrderRoutes from "./routes/purchase-orders";
 
 export function createApp() {
   const app = express();
@@ -28,6 +30,8 @@ export function createApp() {
   app.use("/api/sales", saleRoutes);
   app.use("/api/reports", reportRoutes);
   app.use("/api/audit-logs", auditLogRoutes);
+  app.use("/api/suppliers", supplierRoutes);
+  app.use("/api/purchase-orders", purchaseOrderRoutes);
 
   app.use(errorHandler);
   return app;
