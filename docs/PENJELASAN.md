@@ -423,6 +423,47 @@ Jika data atau transaksi gagal divalidasi, notifikasi tidak dikirim karena perub
 3. **Bagaimana token bot diamankan?**
    Token dan chat ID hanya dibaca dari environment backend, tidak disimpan di source code, frontend, atau tabel database.
 
+## M9 — Pemindaian barcode produk
+
+### 1. Masalah bisnis yang diselesaikan
+
+Kasir perlu memilih barang dengan cepat dan tepat. M9 memungkinkan kode barcode disimpan pada produk dan dipindai di halaman Kasir menggunakan scanner USB/Bluetooth yang bekerja seperti keyboard, sehingga kasir tidak perlu mencari nama produk secara manual.
+
+### 2. Tabel dan relasinya
+
+Kolom `Product.barcode` ditambahkan sebagai teks opsional yang unik. Kolom ini tetap menjadi bagian dari tabel `Product`; relasi produk ke kategori, mutasi stok, dan item penjualan tidak berubah. Produk lama boleh tetap tidak memiliki barcode.
+
+### 3. Alur langkah demi langkah saat fitur dipakai
+
+1. ADMIN atau GUDANG membuka halaman Produk dan menambah atau mengedit produk.
+2. Pengguna mengisi kolom Barcode (opsional) dengan angka/kode yang tercetak pada kemasan, atau membiarkannya kosong.
+3. API menolak barcode yang sudah dipakai produk lain dan menyimpan nilainya pada `Product`.
+4. Di halaman Kasir, kasir memfokuskan kolom pencarian lalu memindai kode barcode. Scanner biasanya mengetikkan kode dan mengirim Enter.
+5. API mencari barcode bersama nama dan SKU. Jika hanya satu produk ditemukan, barang ditambahkan ke keranjang; stok habis menghasilkan pesan, bukan penambahan.
+6. Kasir melanjutkan proses pembayaran seperti biasa. Scanner USB/Bluetooth tidak memerlukan koneksi khusus ke server; scanner mengirim karakter seperti keyboard.
+
+### 4. Bagian kode yang paling penting
+
+- `api/prisma/schema.prisma`, model `Product` — mendefinisikan barcode opsional dengan batasan unik.
+- `api/prisma/migrations/20261023224700_product_barcode/migration.sql` — menambah kolom dan indeks unik tanpa mengubah produk lama.
+- `api/src/routes/products.ts`, `GET /` — mengembalikan dan mencari barcode; route `POST /` dan `PUT /:id` memvalidasi duplikasi.
+- `web/src/pages/Products.tsx`, fungsi `saveProduct()` — mengirim barcode dari formulir produk.
+- `web/src/pages/Cashier.tsx`, fungsi `handleSearchKeyDown()` — mencari kode hasil scan dan menambah satu produk cocok ke keranjang.
+- `api/tests/product-barcode.test.ts` — menguji pencarian barcode, larangan duplikat, dan penghapusan barcode.
+
+### 5. Apa yang terjadi kalau ada yang gagal di tengah
+
+Barcode duplikat ditolak dengan konflik sehingga nilainya tidak menimpa produk lain. Jika kode hasil scan tidak cocok dengan produk atau stok produk habis, halaman Kasir menampilkan pesan dan tidak membuat penjualan. Produk lama tetap dapat dicari menggunakan nama atau SKU karena barcode bersifat opsional. Jika migrasi belum diterapkan, backend belum memiliki kolom barcode; jalankan migrasi database sebelum memakai fitur ini.
+
+### 6. Pertanyaan interviewer dan jawabannya
+
+1. **Apakah aplikasi membutuhkan scanner model tertentu?**
+   Tidak. Scanner USB/Bluetooth yang mengetikkan hasil scan seperti keyboard dapat digunakan; biasanya scanner mengirim Enter setelah kode.
+2. **Apakah semua produk wajib memiliki barcode?**
+   Tidak. Barcode opsional agar produk lama atau produk tanpa kode cetak tetap bisa dipakai dengan pencarian nama/SKU.
+3. **Bagaimana mencegah kode scan yang sama memilih beberapa produk?**
+   Database menerapkan indeks unik, dan API memeriksa duplikasi sebelum menyimpan; barcode yang sama tidak dapat terpasang pada dua produk.
+
 ## Alur kerja berdasarkan role
 
 Role menentukan pekerjaan harian pengguna. Menu di frontend membantu menampilkan fitur yang relevan, sementara API tetap memeriksa izin setiap kali ada request.

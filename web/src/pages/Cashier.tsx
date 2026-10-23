@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 type Product = {
   id: number;
   sku: string;
+  barcode: string | null;
   name: string;
   categoryId: number;
   category: string;
@@ -57,6 +58,7 @@ const receiptDateFormatter = new Intl.DateTimeFormat("id-ID", {
 export default function Cashier() {
   const user = JSON.parse(localStorage.getItem("user") ?? "null") as User;
   const searchRef = useRef<HTMLInputElement>(null);
+  const scanInProgressRef = useRef(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState("");
@@ -122,10 +124,32 @@ export default function Cashier() {
   }
 
   function handleSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "Enter" && filteredProducts.length === 1 && filteredProducts[0].stock > 0) {
-      event.preventDefault();
-      add(filteredProducts[0]);
-    }
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    const code = search.trim();
+    if (!code || scanInProgressRef.current) return;
+
+    scanInProgressRef.current = true;
+    void api<Product[]>("/products?search=" + encodeURIComponent(code))
+      .then((matches) => {
+        const product =
+          matches.find((item) => item.barcode === code || item.sku === code) ??
+          (matches.length === 1 ? matches[0] : undefined);
+        if (!product) {
+          toast.error("Produk tidak ditemukan. Periksa barcode atau kata pencarian.");
+          return;
+        }
+        if (product.stock <= 0) {
+          toast.error(`Stok ${product.name} habis`);
+          return;
+        }
+        add(product);
+        setSearch("");
+      })
+      .catch((requestError: Error) => toast.error(`Produk gagal dicari: ${requestError.message}`))
+      .finally(() => {
+        scanInProgressRef.current = false;
+      });
   }
 
   function updateDiscount(value: string) {
@@ -191,7 +215,7 @@ export default function Cashier() {
               <Input
                 ref={searchRef}
                 aria-label="Cari produk"
-                placeholder="Cari nama atau SKU, lalu tekan Enter"
+                placeholder="Pindai barcode atau cari nama/SKU, lalu tekan Enter"
                 className="pl-9"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}

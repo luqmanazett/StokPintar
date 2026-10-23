@@ -57,6 +57,14 @@ CLI mengembalikan status gagal bila ada saldo stok negatif atau hubungan/perhitu
 
 ADMIN dan MANAJER dapat memakai `GET /api/reports/analytics?from=...&to=...` untuk membandingkan transaksi, pendapatan, dan laba dengan periode sebelumnya yang sama panjang, sekaligus melihat ringkasan metode pembayaran, kasir, dan pengeluaran per kategori. Endpoint laporan harian serta produk terlaris yang sudah tersedia melengkapi halaman Analitik. Seluruh waktu dikirim sebagai ISO date-time dan parameter perlu di-encode saat disusun di URL.
 
+## Barcode produk
+
+Produk dapat menyimpan `barcode` opsional yang unik melalui endpoint produk. Barcode dicakup dalam `GET /api/products?search=` bersama pencarian nama dan SKU. Pada halaman Kasir, pemindai barcode USB/Bluetooth yang berfungsi sebagai keyboard dapat memindai kode ke kolom pencarian; tekan Enter jika pemindai tidak mengirim tombol tersebut otomatis, lalu produk cocok masuk ke keranjang. Terapkan migrasi Prisma dari folder `api/` sebelum menjalankan versi ini:
+
+```sh
+npx prisma migrate deploy
+```
+
 ## Notifikasi Telegram
 
 Notifikasi bersifat opsional. Atur `TELEGRAM_BOT_TOKEN` dan `TELEGRAM_CHAT_ID` pada environment server; jangan masukkan token ke source code atau commit ke repositori. Setelah penyiapan, ADMIN dapat menguji koneksi melalui `POST /api/notifications/telegram/test`. Server mengirim pemberitahuan untuk transaksi baru dan saat stok melewati batas minimum ke bawah akibat penjualan, penyesuaian, atau opname. Pengiriman berlangsung setelah transaksi database berhasil; jika Telegram tidak tersedia, transaksi tetap tersimpan dan kegagalan dicatat di log server. Request ke Telegram memiliki batas waktu lima detik.

@@ -9,6 +9,7 @@ const router = Router();
 
 const productSchema = z.object({
   sku: z.string().trim().min(1),
+  barcode: z.string().trim().min(1).max(128).nullable().optional(),
   name: z.string().trim().min(1),
   categoryId: z.number().int(),
   costPrice: z.number().int().min(0),
@@ -19,14 +20,14 @@ const productSchema = z.object({
 router.get("/", requireAuth, async (req, res) => {
   const search = `%${String(req.query.search ?? "")}%`;
   const rows = await prisma.$queryRaw`
-    SELECT p.id, p.sku, p.name, p."categoryId", c.name AS category,
+    SELECT p.id, p.sku, p.barcode, p.name, p."categoryId", c.name AS category,
     p."costPrice", p."sellPrice", p."minStock",
     COALESCE(SUM(m.change), 0)::int AS stock
     FROM "Product" p
     JOIN "Category" c ON c.id = p."categoryId"
     LEFT JOIN "StockMovement" m ON m."productId" = p.id
     WHERE p."isActive" = true
-    AND (p.name ILIKE ${search} OR p.sku ILIKE ${search})
+    AND (p.name ILIKE ${search} OR p.sku ILIKE ${search} OR p.barcode ILIKE ${search})
     GROUP BY p.id, c.name
     ORDER BY p.name`;
   res.json(rows);
@@ -36,6 +37,10 @@ router.post("/", requireAuth, requireRole("ADMIN", "GUDANG"), async (req, res) =
   const data = productSchema.parse(req.body);
   const exists = await prisma.product.findUnique({ where: { sku: data.sku } });
   if (exists) throw new AppError(409, "SKU sudah dipakai");
+  if (data.barcode) {
+    const barcodeExists = await prisma.product.findUnique({ where: { barcode: data.barcode } });
+    if (barcodeExists) throw new AppError(409, "Barcode sudah dipakai");
+  }
   const product = await prisma.$transaction(async (tx) => {
     const created = await tx.product.create({ data });
     await audit(tx, {
@@ -45,6 +50,7 @@ router.post("/", requireAuth, requireRole("ADMIN", "GUDANG"), async (req, res) =
       entityId: created.id,
       after: {
         sku: created.sku,
+        barcode: created.barcode,
         name: created.name,
         categoryId: created.categoryId,
         costPrice: created.costPrice,
@@ -62,6 +68,10 @@ router.put("/:id", requireAuth, requireRole("ADMIN", "GUDANG"), async (req, res)
   const data = productSchema.partial().parse(req.body);
   const before = await prisma.product.findUnique({ where: { id } });
   if (!before) throw new AppError(404, "Produk tidak ditemukan");
+  if (data.barcode) {
+    const barcodeExists = await prisma.product.findUnique({ where: { barcode: data.barcode } });
+    if (barcodeExists && barcodeExists.id !== id) throw new AppError(409, "Barcode sudah dipakai");
+  }
 
   const product = await prisma.$transaction(async (tx) => {
     const updated = await tx.product.update({ where: { id }, data });
@@ -70,8 +80,8 @@ router.put("/:id", requireAuth, requireRole("ADMIN", "GUDANG"), async (req, res)
       action: "PRODUCT_UPDATE",
       entity: "Product",
       entityId: id,
-      before: { sku: before.sku, name: before.name, costPrice: before.costPrice, sellPrice: before.sellPrice },
-      after: { sku: updated.sku, name: updated.name, costPrice: updated.costPrice, sellPrice: updated.sellPrice },
+      before: { sku: before.sku, barcode: before.barcode, name: before.name, costPrice: before.costPrice, sellPrice: before.sellPrice },
+      after: { sku: updated.sku, barcode: updated.barcode, name: updated.name, costPrice: updated.costPrice, sellPrice: updated.sellPrice },
       ip: req.ip,
     });
     return updated;

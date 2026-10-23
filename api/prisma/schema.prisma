@@ -93,6 +93,7 @@ model Category {
 model Product {
   id         Int             @id @default(autoincrement())
   sku        String          @unique
+  barcode    String?         @unique
   name       String
   categoryId Int
   category   Category        @relation(fields: [categoryId], references: [id])
