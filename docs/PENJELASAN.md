@@ -1,6 +1,6 @@
 # Penjelasan Modul StokPintar
 
-Dokumen ini menjelaskan modul M0 sampai M6 dengan bahasa sederhana. Setiap bagian merangkum tujuan bisnis, tabel dan hubungannya, cara fitur berjalan, bagian kode penting, penanganan kegagalan, serta contoh pertanyaan wawancara.
+Dokumen ini menjelaskan modul M0 sampai M7 dengan bahasa sederhana. Setiap bagian merangkum tujuan bisnis, tabel dan hubungannya, cara fitur berjalan, bagian kode penting, penanganan kegagalan, serta contoh pertanyaan wawancara.
 
 > Setelah modul berikutnya selesai, tambahkan bagian baru dengan enam subbagian yang sama. Sesuaikan penjelasan dengan kode dan tes yang benar-benar dibuat.
 
@@ -335,6 +335,52 @@ Seed berhenti sebelum menulis jika konfirmasi tidak diberikan, aplikasi berjalan
 3. **Apakah pemeriksaan integritas memperbaiki data secara otomatis?**
    Tidak. Pemeriksaan hanya melaporkan ketidaksesuaian agar admin dapat menyelidikinya tanpa perubahan diam-diam.
 
+## M7 — Analitik usaha
+
+### 1. Masalah bisnis yang diselesaikan
+
+Ringkasan total saja belum cukup untuk memahami perubahan usaha. M7 memberi admin dan manajer perbandingan periode yang sama panjang, tren penjualan harian, perincian metode pembayaran, kinerja kasir, pengeluaran per kategori, dan produk terlaris.
+
+### 2. Tabel dan relasinya
+
+M7 memakai tabel yang sudah digunakan modul sebelumnya dan tidak menambah tabel baru:
+
+- `Sale` terhubung ke `User` kasir dan memiliki banyak `SaleItem`.
+- `SaleItem` terhubung ke `Product`, tempat kategori produk berasal.
+- `SaleReturn` dan `SaleReturnItem` menghubungkan refund ke transaksi dan item asal.
+- `Expense` menyimpan biaya per tanggal dan kategori.
+- Angka laba memakai snapshot harga/modal dari `SaleItem`, biaya `Expense`, serta refund dari `SaleReturn`.
+
+### 3. Alur langkah demi langkah saat fitur dipakai
+
+1. Admin atau manajer membuka menu **Analitik**, lalu memilih 7 hari, 30 hari, atau rentang tanggal sendiri.
+2. Frontend mengirim tanggal awal dan akhir ke API laporan dengan encoding URL.
+3. API menghitung ringkasan periode aktif dan periode sebelumnya dengan durasi yang sama.
+4. API membandingkan transaksi, pendapatan, dan laba; persentase perubahan ditampilkan jika ada nilai pembanding.
+5. Grafik menampilkan penjualan dan transaksi per hari; tabel menampilkan metode pembayaran, kasir, dan produk terlaris.
+6. Pengeluaran dikelompokkan per kategori untuk periode yang dipilih, sementara refund mengurangi pendapatan dan HPP sesuai perhitungan laporan.
+
+### 4. Bagian kode yang paling penting
+
+- `api/src/routes/reports.ts`, route `GET /analytics` — menyusun perbandingan periode, metode pembayaran, kinerja kasir, dan biaya per kategori.
+- `api/src/routes/reports.ts`, fungsi `calculateProfitLoss()` — menghitung pendapatan, refund, HPP, biaya, dan laba.
+- `web/src/pages/Analytics.tsx`, fungsi `loadAnalytics()` — meminta ringkasan, grafik, dan produk terlaris untuk tanggal terpilih.
+- `web/src/pages/Analytics.tsx`, komponen `InsightCard`, `BreakdownCard`, dan `ChangeBadge` — menampilkan KPI, rincian, dan perbandingan.
+- `web/src/components/sales-chart.tsx`, komponen `SalesChart` — menggambar tren harian.
+
+### 5. Apa yang terjadi kalau ada yang gagal di tengah
+
+Rentang tanggal yang terbalik ditolak, dan role selain ADMIN/MANAJER tidak dapat memakai endpoint analitik. Jika salah satu request analitik gagal, halaman menampilkan pesan error dan tombol coba lagi, bukan angka sukses palsu. Jika periode sebelumnya tidak memiliki transaksi atau laba, perubahan persentase ditampilkan sebagai “Belum ada pembanding” ketika persentasenya tidak dapat dihitung. Modul ini membaca data dan tidak mengubah transaksi.
+
+### 6. Pertanyaan interviewer dan jawabannya
+
+1. **Mengapa membandingkan dengan periode yang sama panjang?**
+   Agar perbandingan lebih adil, misalnya 7 hari terakhir dibandingkan dengan 7 hari sebelumnya, bukan dengan periode yang lebih panjang.
+2. **Bagaimana retur memengaruhi angka analitik?**
+   Refund mengurangi pendapatan dan biaya barang yang dikembalikan mengurangi HPP, sehingga pendapatan dan laba bersih tidak tampak lebih tinggi dari keadaan sebenarnya.
+3. **Apakah M7 menambahkan tabel baru?**
+   Tidak. Analitik mengolah relasi penjualan, item, retur, kasir, dan pengeluaran yang sudah disimpan modul sebelumnya.
+
 ## Alur kerja berdasarkan role
 
 Role menentukan pekerjaan harian pengguna. Menu di frontend membantu menampilkan fitur yang relevan, sementara API tetap memeriksa izin setiap kali ada request.
@@ -349,6 +395,7 @@ Role menentukan pekerjaan harian pengguna. Menu di frontend membantu menampilkan
 6. Membuka log audit untuk meninjau siapa yang melakukan perubahan.
 7. Mencatat pengeluaran toko dan mengekspor laporan keuangan.
 8. Menjalankan pemeriksaan integritas data.
+9. Membandingkan tren dan kinerja usaha pada halaman analitik.
 
 **Batas penting:** tindakan admin tetap mengikuti validasi bisnis. Contohnya, transaksi yang sudah memiliki retur tidak dapat di-void.
 
@@ -360,6 +407,7 @@ Role menentukan pekerjaan harian pengguna. Menu di frontend membantu menampilkan
 4. Membuat opname atau memeriksa hitungannya, kemudian memfinalisasi hasil.
 5. Membatalkan transaksi yang memenuhi syarat atau mencatat retur barang.
 6. Mencatat pengeluaran serta mengekspor laporan laba-rugi.
+7. Membandingkan tren penjualan dan kinerja kasir pada halaman analitik.
 
 **Batas penting:** manajer tidak mengelola akun, kategori, atau log audit. Manajer juga tidak mencatat penerimaan PO; pekerjaan itu diberikan kepada admin atau gudang.
 

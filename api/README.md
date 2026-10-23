@@ -52,3 +52,7 @@ npm run db:check
 ```
 
 CLI mengembalikan status gagal bila ada saldo stok negatif atau hubungan/perhitungan penjualan, retur, PO, opname, maupun pengeluaran yang tidak konsisten.
+
+## Analitik
+
+ADMIN dan MANAJER dapat memakai `GET /api/reports/analytics?from=...&to=...` untuk membandingkan transaksi, pendapatan, dan laba dengan periode sebelumnya yang sama panjang, sekaligus melihat ringkasan metode pembayaran, kasir, dan pengeluaran per kategori. Endpoint laporan harian serta produk terlaris yang sudah tersedia melengkapi halaman Analitik. Seluruh waktu dikirim sebagai ISO date-time dan parameter perlu di-encode saat disusun di URL.

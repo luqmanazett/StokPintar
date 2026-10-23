@@ -35,6 +35,80 @@ router.get("/profit-loss", requireAuth, requireRole("ADMIN", "MANAJER"), async (
   });
 });
 
+router.get("/analytics", requireAuth, requireRole("ADMIN", "MANAJER"), async (req, res) => {
+  const { from, to } = rangeSchema.parse(req.query);
+  const periodLength = to.getTime() - from.getTime() + 1;
+  const previousTo = new Date(from.getTime() - 1);
+  const previousFrom = new Date(previousTo.getTime() - periodLength + 1);
+
+  const [current, previous, paymentMethods, cashiers, expensesByCategory] = await Promise.all([
+    calculateProfitLoss(from, to),
+    calculateProfitLoss(previousFrom, previousTo),
+    prisma.$queryRaw<{ paymentMethod: string; transactions: number; revenue: number }[]>`
+      WITH sales AS (
+        SELECT "paymentMethod", COUNT(*)::int AS transactions, COALESCE(SUM(total), 0)::int AS revenue
+        FROM "Sale"
+        WHERE status = 'COMPLETED' AND "createdAt" >= ${from} AND "createdAt" <= ${to}
+        GROUP BY "paymentMethod"
+      ), refunds AS (
+        SELECT s."paymentMethod", COALESCE(SUM(sr."totalRefund"), 0)::int AS refunds
+        FROM "SaleReturn" sr
+        JOIN "Sale" s ON s.id = sr."saleId"
+        WHERE sr."createdAt" >= ${from} AND sr."createdAt" <= ${to}
+        GROUP BY s."paymentMethod"
+      )
+      SELECT COALESCE(s."paymentMethod", r."paymentMethod") AS "paymentMethod",
+      COALESCE(s.transactions, 0)::int AS transactions,
+      (COALESCE(s.revenue, 0) - COALESCE(r.refunds, 0))::int AS revenue
+      FROM sales s FULL OUTER JOIN refunds r ON r."paymentMethod" = s."paymentMethod"
+      ORDER BY revenue DESC
+    `,
+    prisma.$queryRaw<{ cashierId: number; name: string; transactions: number; revenue: number }[]>`
+      WITH sales AS (
+        SELECT "cashierId", COUNT(*)::int AS transactions, COALESCE(SUM(total), 0)::int AS revenue
+        FROM "Sale"
+        WHERE status = 'COMPLETED' AND "createdAt" >= ${from} AND "createdAt" <= ${to}
+        GROUP BY "cashierId"
+      ), refunds AS (
+        SELECT s."cashierId", COALESCE(SUM(sr."totalRefund"), 0)::int AS refunds
+        FROM "SaleReturn" sr
+        JOIN "Sale" s ON s.id = sr."saleId"
+        WHERE sr."createdAt" >= ${from} AND sr."createdAt" <= ${to}
+        GROUP BY s."cashierId"
+      )
+      SELECT u.id AS "cashierId", u.name,
+      COALESCE(s.transactions, 0)::int AS transactions,
+      (COALESCE(s.revenue, 0) - COALESCE(r.refunds, 0))::int AS revenue
+      FROM "User" u
+      LEFT JOIN sales s ON s."cashierId" = u.id
+      LEFT JOIN refunds r ON r."cashierId" = u.id
+      WHERE s."cashierId" IS NOT NULL OR r."cashierId" IS NOT NULL
+      ORDER BY revenue DESC
+      LIMIT 10
+    `,
+    prisma.expense.groupBy({
+      by: ["category"],
+      where: { incurredAt: { gte: from, lte: to } },
+      _sum: { amount: true },
+      orderBy: { category: "asc" },
+    }),
+  ]);
+
+  res.json({
+    current,
+    previous,
+    changes: {
+      transactions: percentageChange(current.transactions, previous.transactions),
+      revenue: percentageChange(current.revenue, previous.revenue),
+      profit: percentageChange(current.profit, previous.profit),
+    },
+    paymentMethods,
+    cashiers,
+    expensesByCategory: expensesByCategory.map((item) => ({ category: item.category, amount: item._sum.amount ?? 0 })),
+    previousPeriod: { from: previousFrom, to: previousTo },
+  });
+});
+
 router.get("/daily", requireAuth, requireRole("ADMIN", "MANAJER"), async (req, res) => {
   const { from, to } = rangeSchema.parse(req.query);
 
@@ -159,4 +233,9 @@ async function calculateProfitLoss(from: Date, to: Date) {
     expenses,
     profit: revenue - netCost - expenses,
   };
+}
+
+function percentageChange(current: number, previous: number) {
+  if (previous === 0) return current === 0 ? 0 : null;
+  return Math.round(((current - previous) / Math.abs(previous)) * 1000) / 10;
 }
