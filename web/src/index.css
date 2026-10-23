@@ -68,3 +68,39 @@ select {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
+
+@media print {
+  @page {
+    margin: 0;
+    size: 80mm auto;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .receipt-print,
+  .receipt-print * {
+    visibility: visible !important;
+  }
+
+  .receipt-print {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    display: block !important;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    max-height: none !important;
+    overflow: visible !important;
+    transform: none !important;
+    border: 0 !important;
+    padding: 8mm !important;
+    box-shadow: none !important;
+    color: #000 !important;
+  }
+
+  .receipt-print > button[aria-label="Tutup"],
+  .receipt-dialog-actions {
+    display: none !important;
+  }
+}
