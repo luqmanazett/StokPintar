@@ -1,6 +1,16 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { BrowserRouter, NavLink, Navigate, Outlet, Route, Routes, useNavigate } from "react-router-dom";
-import { LayoutDashboard, LogOut, Menu, Package, ShoppingCart, Store } from "lucide-react";
+import {
+  ClipboardList,
+  FolderTree,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Package,
+  ShoppingCart,
+  Store,
+  UserPlus,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DialogTitle } from "@/components/ui/dialog";
@@ -11,6 +21,10 @@ import Cashier from "./pages/Cashier";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Products from "./pages/Products";
+import Transactions from "./pages/Transactions";
+import Categories from "./pages/Categories";
+import CashierAccounts from "./pages/CashierAccounts";
+import NotFound from "./pages/NotFound";
 
 type User = {
   name?: string;
@@ -28,6 +42,9 @@ const navigation: NavigationItem[] = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
   { label: "Produk", href: "/products", icon: Package },
   { label: "Kasir", href: "/cashier", icon: ShoppingCart },
+  { label: "Transaksi", href: "/transactions", icon: ClipboardList },
+  { label: "Kategori", href: "/categories", icon: FolderTree, adminOnly: true },
+  { label: "Akun kasir", href: "/cashier-accounts", icon: UserPlus, adminOnly: true },
 ];
 
 function Sidebar({
@@ -96,6 +113,11 @@ function Sidebar({
   );
 }
 
+function AdminRoute({ children }: { children: ReactNode }) {
+  const user = JSON.parse(localStorage.getItem("user") ?? "null") as User | null;
+  return user?.role === "ADMIN" ? children : <Navigate to="/" replace />;
+}
+
 function Layout() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -149,7 +171,11 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/products" element={<Products />} />
           <Route path="/cashier" element={<Cashier />} />
+          <Route path="/transactions" element={<Transactions />} />
+          <Route path="/categories" element={<AdminRoute><Categories /></AdminRoute>} />
+          <Route path="/cashier-accounts" element={<AdminRoute><CashierAccounts /></AdminRoute>} />
         </Route>
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );
