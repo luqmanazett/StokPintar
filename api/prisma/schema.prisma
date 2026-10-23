@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  KASIR
+}
+
+enum MovementType {
+  IN
+  OUT
+  ADJUSTMENT
+  SALE
+  VOID
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  QRIS
+}
+
+enum SaleStatus {
+  COMPLETED
+  VOIDED
+}
+
+model User {
+  id           Int             @id @default(autoincrement())
+  name         String
+  email        String          @unique
+  passwordHash String
+  role         Role            @default(KASIR)
+  isActive     Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  sales        Sale[]
+  movements    StockMovement[]
+}
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  products Product[]
+}
+
+model Product {
+  id         Int             @id @default(autoincrement())
+  sku        String          @unique
+  name       String
+  categoryId Int
+  category   Category        @relation(fields: [categoryId], references: [id])
+  costPrice  Int
+  sellPrice  Int
+  minStock   Int             @default(5)
+  isActive   Boolean         @default(true)
+  createdAt  DateTime        @default(now())
+  movements  StockMovement[]
+  saleItems  SaleItem[]
+}
+
+model StockMovement {
+  id          Int          @id @default(autoincrement())
+  productId   Int
+  product     Product      @relation(fields: [productId], references: [id])
+  type        MovementType
+  change      Int
+  note        String?
+  createdById Int
+  createdBy   User         @relation(fields: [createdById], references: [id])
+  saleId      Int?
+  sale        Sale?        @relation(fields: [saleId], references: [id])
+  createdAt   DateTime     @default(now())
+
+  @@index([productId])
+}
+
+model Sale {
+  id            Int           @id @default(autoincrement())
+  cashierId     Int
+  cashier       User          @relation(fields: [cashierId], references: [id])
+  subtotal      Int
+  discount      Int           @default(0)
+  total         Int
+  paymentMethod PaymentMethod
+  status        SaleStatus    @default(COMPLETED)
+  createdAt     DateTime      @default(now())
+  items         SaleItem[]
+  movements     StockMovement[]
+
+  @@index([createdAt])
+}
+
+model SaleItem {
+  id        Int     @id @default(autoincrement())
+  saleId    Int
+  sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Int
+  unitCost  Int
+}
