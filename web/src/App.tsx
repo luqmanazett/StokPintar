@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from "react";
-import { BrowserRouter, NavLink, Navigate, Outlet, Route, Routes, useNavigate } from "react-router-dom";
+import { useEffect, useState, type ReactNode } from "react";
+import { BrowserRouter, NavLink, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import {
   ClipboardList,
   FolderTree,
@@ -46,6 +46,26 @@ const navigation: NavigationItem[] = [
   { label: "Kategori", href: "/categories", icon: FolderTree, adminOnly: true },
   { label: "Akun kasir", href: "/cashier-accounts", icon: UserPlus, adminOnly: true },
 ];
+
+const pageTitles: Record<string, string> = {
+  "/": "Dashboard",
+  "/login": "Masuk",
+  "/products": "Produk",
+  "/cashier": "Kasir",
+  "/transactions": "Riwayat transaksi",
+  "/categories": "Kategori",
+  "/cashier-accounts": "Akun kasir",
+};
+
+function PageTitle() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    document.title = `${pageTitles[pathname] ?? "Halaman tidak ditemukan"} | StokPintar`;
+  }, [pathname]);
+
+  return null;
+}
 
 function Sidebar({
   user,
@@ -164,6 +184,7 @@ function Layout() {
 export default function App() {
   return (
     <BrowserRouter>
+      <PageTitle />
       <Toaster />
       <Routes>
         <Route path="/login" element={<Login />} />
