@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { api, rupiah } from "../api";
+import { PageHeader } from "@/components/page-header";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 type Summary = { transactions: number; revenue: number; profit: number };
 type Top = { name: string; quantity: number };
@@ -24,42 +27,45 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold">Dashboard hari ini</h1>
+      <PageHeader title="Dashboard" description="Ringkasan aktivitas toko hari ini." />
 
       {summary && (
-        <div className="grid grid-cols-3 gap-4">
-          <div className="rounded bg-white p-4 shadow">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Card className="p-5">
             Transaksi<p className="text-2xl font-bold">{summary.transactions}</p>
-          </div>
-          <div className="rounded bg-white p-4 shadow">
+          </Card>
+          <Card className="p-5">
             Pendapatan<p className="text-2xl font-bold">{rupiah(summary.revenue)}</p>
-          </div>
-          <div className="rounded bg-white p-4 shadow">
+          </Card>
+          <Card className="p-5">
             Laba<p className="text-2xl font-bold">{rupiah(summary.profit)}</p>
-          </div>
+          </Card>
         </div>
       )}
 
       {top.length > 0 && (
-        <div className="rounded bg-white p-4 shadow">
-          <h2 className="font-bold">Produk terlaris hari ini</h2>
+        <Card className="p-5">
+          <h2 className="font-semibold">Produk terlaris hari ini</h2>
           {top.map((t) => (
-            <p key={t.name}>
-              {t.name}: {t.quantity} terjual
+            <p key={t.name} className="mt-3 text-sm text-slate-600">
+              {t.name}: <span className="font-medium text-slate-900">{t.quantity} terjual</span>
             </p>
           ))}
-        </div>
+        </Card>
       )}
 
-      <div className="rounded bg-white p-4 shadow">
-        <h2 className="font-bold">Stok menipis</h2>
-        {low.length === 0 && <p className="text-sm text-gray-500">Semua stok aman</p>}
+      <Card className="p-5">
+        <h2 className="font-semibold">Stok menipis</h2>
+        {low.length === 0 && <p className="mt-3 text-sm text-muted-foreground">Semua stok aman</p>}
         {low.map((l) => (
-          <p key={l.id} className="text-red-600">
-            {l.name}: sisa {l.stock} (minimum {l.minStock})
+          <p key={l.id} className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+            <span className="font-medium text-slate-800">{l.name}</span>
+            <Badge variant={l.stock === 0 ? "destructive" : "warning"}>
+              Sisa {l.stock} (minimum {l.minStock})
+            </Badge>
           </p>
         ))}
-      </div>
+      </Card>
     </div>
   );
 }

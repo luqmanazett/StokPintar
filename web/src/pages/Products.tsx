@@ -1,10 +1,14 @@
 import { useState, useEffect, type FormEvent } from "react";
 import { api, rupiah } from "../api";
+import { PageHeader } from "@/components/page-header";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type Product = { id: number; sku: string; name: string; category: string; sellPrice: number; minStock: number; stock: number };
 type Category = { id: number; name: string };
-
-const box = "rounded border px-2 py-1";
 
 export default function Products() {
   const user = JSON.parse(localStorage.getItem("user") ?? "null");
@@ -58,57 +62,65 @@ export default function Products() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">Produk</h1>
+      <PageHeader title="Produk" description="Kelola daftar produk dan pantau ketersediaan stok." />
       {error && <p className="text-sm text-red-600">{error}</p>}
-      <input className={box} placeholder="Cari nama atau SKU" value={search} onChange={(e) => setSearch(e.target.value)} />
+    <Input className="max-w-md" placeholder="Cari nama atau SKU" value={search} onChange={(e) => setSearch(e.target.value)} />
 
       {isAdmin && (
-        <form onSubmit={addProduct} className="flex flex-wrap gap-2 rounded bg-white p-3 shadow">
-          <input className={box} placeholder="SKU" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
-          <input className={box} placeholder="Nama" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          <select className={box} value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: Number(e.target.value) })}>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <input className={box} type="number" placeholder="Harga beli" value={form.costPrice} onChange={(e) => setForm({ ...form, costPrice: Number(e.target.value) })} />
-          <input className={box} type="number" placeholder="Harga jual" value={form.sellPrice} onChange={(e) => setForm({ ...form, sellPrice: Number(e.target.value) })} />
-          <button className="rounded bg-blue-600 px-3 py-1 text-white">Tambah</button>
-        </form>
+        <Card className="p-4">
+          <form onSubmit={addProduct} className="flex flex-wrap gap-2">
+          <Input className="w-auto min-w-36" placeholder="SKU" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
+          <Input className="w-auto min-w-44" placeholder="Nama" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <select className="h-10 rounded-md border border-input bg-white px-3 text-sm" value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: Number(e.target.value) })}>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          <Input className="w-auto min-w-32" type="number" placeholder="Harga beli" value={form.costPrice} onChange={(e) => setForm({ ...form, costPrice: Number(e.target.value) })} />
+          <Input className="w-auto min-w-32" type="number" placeholder="Harga jual" value={form.sellPrice} onChange={(e) => setForm({ ...form, sellPrice: Number(e.target.value) })} />
+          <Button type="submit">Tambah</Button>
+          </form>
+        </Card>
       )}
 
-      <table className="w-full bg-white text-left text-sm shadow">
-        <thead className="border-b">
-          <tr>
-            <th className="p-2">SKU</th>
-            <th>Nama</th>
-            <th>Kategori</th>
-            <th>Harga</th>
-            <th>Stok</th>
-            {isAdmin && <th>Aksi</th>}
-          </tr>
-        </thead>
-        <tbody>
+    <Card className="overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>SKU</TableHead>
+            <TableHead>Nama</TableHead>
+            <TableHead>Kategori</TableHead>
+            <TableHead>Harga</TableHead>
+            <TableHead>Stok</TableHead>
+            {isAdmin && <TableHead>Aksi</TableHead>}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {products.map((p) => (
-            <tr key={p.id} className="border-b">
-              <td className="p-2">{p.sku}</td>
-              <td>{p.name}</td>
-              <td>{p.category}</td>
-              <td>{rupiah(p.sellPrice)}</td>
-              <td className={p.stock < p.minStock ? "font-bold text-red-600" : ""}>{p.stock}</td>
+            <TableRow key={p.id}>
+              <TableCell className="font-medium text-slate-600">{p.sku}</TableCell>
+              <TableCell className="font-medium text-slate-900">{p.name}</TableCell>
+              <TableCell>{p.category}</TableCell>
+              <TableCell>{rupiah(p.sellPrice)}</TableCell>
+              <TableCell>
+                <Badge variant={p.stock <= 0 ? "destructive" : p.stock < p.minStock ? "warning" : "success"}>
+                  {p.stock <= 0 ? "Habis" : p.stock < p.minStock ? "Menipis" : "Aman"} · {p.stock}
+                </Badge>
+              </TableCell>
               {isAdmin && (
-                <td>
-                  <button onClick={() => addStock(p)} className="text-sm text-blue-600">
+                <TableCell>
+                  <Button variant="ghost" size="sm" onClick={() => addStock(p)}>
                     + Stok
-                  </button>
-                </td>
+                  </Button>
+                </TableCell>
               )}
-            </tr>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
+    </Card>
     </div>
   );
 }
