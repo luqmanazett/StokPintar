@@ -28,3 +28,7 @@ Pemasok dikelola melalui `/api/suppliers`. Siklus PO tersedia di `/api/purchase-
 ## Retur penjualan
 
 ADMIN dan MANAJER mencatat retur parsial melalui `POST /api/sales/:id/returns` dengan alasan dan daftar `saleItemId`/jumlah. Sistem menolak retur melebihi sisa jumlah, mengembalikan stok melalui ledger, mengalokasikan diskon secara proporsional, dan menyimpan audit. Transaksi yang sudah memiliki retur tidak dapat dibatalkan agar stok tidak dikembalikan dua kali. Laporan pendapatan, laba, grafik harian, dan produk terlaris mengurangi refund serta HPP barang yang dikembalikan.
+
+## Pengeluaran dan laba-rugi
+
+ADMIN dan MANAJER dapat mencatat pengeluaran melalui `POST /api/expenses` dan melihat daftar dengan filter tanggal di `GET /api/expenses`. Laporan `GET /api/reports/profit-loss` menghitung pendapatan bersih setelah refund, HPP bersih setelah barang retur, total pengeluaran, serta laba bersih untuk rentang tanggal yang diminta. Halaman Keuangan menyediakan unduhan CSV untuk ringkasan laba-rugi dan daftar pengeluaran. Pencatatan pengeluaran disimpan bersama jejak audit.

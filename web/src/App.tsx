@@ -14,6 +14,7 @@ import {
   PackageCheck,
   ClipboardCheck,
   UserPlus,
+  ChartNoAxesCombined,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ import AuditLogs from "./pages/AuditLogs";
 import Suppliers from "./pages/Suppliers";
 import PurchaseOrders from "./pages/PurchaseOrders";
 import StockOpnames from "./pages/StockOpnames";
+import Finance from "./pages/Finance";
 import NotFound from "./pages/NotFound";
 
 type Role = "ADMIN" | "MANAJER" | "GUDANG" | "KASIR";
@@ -59,6 +61,7 @@ const navigation: NavigationItem[] = [
   { label: "Pemasok", href: "/suppliers", icon: Truck, roles: ["ADMIN", "MANAJER"] },
   { label: "Pembelian", href: "/purchases", icon: PackageCheck, roles: ["ADMIN", "MANAJER", "GUDANG"] },
   { label: "Stok opname", href: "/stock-opnames", icon: ClipboardCheck, roles: ["ADMIN", "MANAJER", "GUDANG"] },
+  { label: "Keuangan", href: "/finance", icon: ChartNoAxesCombined, roles: ["ADMIN", "MANAJER"] },
 ];
 
 const pageTitles: Record<string, string> = {
@@ -73,6 +76,7 @@ const pageTitles: Record<string, string> = {
   "/suppliers": "Pemasok",
   "/purchases": "Pembelian",
   "/stock-opnames": "Stok opname",
+  "/finance": "Keuangan",
 };
 
 function PageTitle() {
@@ -222,6 +226,7 @@ export default function App() {
           <Route path="/suppliers" element={<RoleRoute roles={["ADMIN", "MANAJER"]}><Suppliers /></RoleRoute>} />
           <Route path="/purchases" element={<RoleRoute roles={["ADMIN", "MANAJER", "GUDANG"]}><PurchaseOrders /></RoleRoute>} />
           <Route path="/stock-opnames" element={<RoleRoute roles={["ADMIN", "MANAJER", "GUDANG"]}><StockOpnames /></RoleRoute>} />
+          <Route path="/finance" element={<RoleRoute roles={["ADMIN", "MANAJER"]}><Finance /></RoleRoute>} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>

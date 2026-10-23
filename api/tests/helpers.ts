@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "../src/db";
 
 export async function resetDatabase() {
+  await prisma.expense.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.stockMovement.deleteMany();
   await prisma.saleReturnItem.deleteMany();

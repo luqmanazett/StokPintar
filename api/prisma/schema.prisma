@@ -64,6 +64,7 @@ model User {
   goodsReceipts  GoodsReceipt[]   @relation("GoodsReceiptCreator")
   stockOpnames   StockOpname[]    @relation("StockOpnameCreator")
   saleReturns    SaleReturn[]     @relation("SaleReturnCreator")
+  expenses      Expense[]        @relation("ExpenseCreator")
 }
 
 model AuditLog {
@@ -277,4 +278,18 @@ model SaleReturnItem {
   refundAmount Int
 
   @@unique([saleReturnId, saleItemId])
+}
+
+model Expense {
+  id          Int      @id @default(autoincrement())
+  category    String
+  description String?
+  amount      Int
+  incurredAt  DateTime
+  createdById Int
+  createdBy   User     @relation("ExpenseCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([incurredAt])
+  @@index([category, incurredAt])
 }

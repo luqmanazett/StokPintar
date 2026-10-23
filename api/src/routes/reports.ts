@@ -8,40 +8,31 @@ const router = Router();
 const rangeSchema = z.object({
   from: z.coerce.date(),
   to: z.coerce.date(),
+}).refine(({ from, to }) => from <= to, {
+  message: "Tanggal mulai tidak boleh melewati tanggal akhir.",
+  path: ["from"],
 });
 
 router.get("/summary", requireAuth, requireRole("ADMIN", "MANAJER"), async (req, res) => {
   const { from, to } = rangeSchema.parse(req.query);
+  res.json(await calculateProfitLoss(from, to));
+});
 
-  const [sales] = await prisma.$queryRaw<{ transactions: number; revenue: number }[]>`
-    SELECT COUNT(*)::int AS transactions, COALESCE(SUM(total), 0)::int AS revenue
-    FROM "Sale"
-    WHERE status = 'COMPLETED' AND "createdAt" >= ${from} AND "createdAt" <= ${to}
-  `;
-
-  const [returns] = await prisma.$queryRaw<{ refunds: number }[]>`
-    SELECT COALESCE(SUM("totalRefund"), 0)::int AS refunds
-    FROM "SaleReturn"
-    WHERE "createdAt" >= ${from} AND "createdAt" <= ${to}
-  `;
-
-  const [cost] = await prisma.$queryRaw<{ cost: number }[]>`
-    SELECT COALESCE(SUM(si.quantity * si."unitCost"), 0)::int AS cost
-    FROM "SaleItem" si
-    JOIN "Sale" s ON s.id = si."saleId"
-    WHERE s.status = 'COMPLETED' AND s."createdAt" >= ${from} AND s."createdAt" <= ${to}
-  `;
-
-  const [returnedCost] = await prisma.$queryRaw<{ cost: number }[]>`
-    SELECT COALESCE(SUM(sri.quantity * si."unitCost"), 0)::int AS cost
-    FROM "SaleReturnItem" sri
-    JOIN "SaleReturn" sr ON sr.id = sri."saleReturnId"
-    JOIN "SaleItem" si ON si.id = sri."saleItemId"
-    WHERE sr."createdAt" >= ${from} AND sr."createdAt" <= ${to}
-  `;
-  const revenue = sales.revenue - returns.refunds;
-  const netCost = cost.cost - returnedCost.cost;
-  res.json({ transactions: sales.transactions, revenue, profit: revenue - netCost, grossRevenue: sales.revenue, refunds: returns.refunds });
+router.get("/profit-loss", requireAuth, requireRole("ADMIN", "MANAJER"), async (req, res) => {
+  const { from, to } = rangeSchema.parse(req.query);
+  const [summary, expensesByCategory] = await Promise.all([
+    calculateProfitLoss(from, to),
+    prisma.expense.groupBy({
+      by: ["category"],
+      where: { incurredAt: { gte: from, lte: to } },
+      _sum: { amount: true },
+      orderBy: { category: "asc" },
+    }),
+  ]);
+  res.json({
+    ...summary,
+    expensesByCategory: expensesByCategory.map((item) => ({ category: item.category, amount: item._sum.amount ?? 0 })),
+  });
 });
 
 router.get("/daily", requireAuth, requireRole("ADMIN", "MANAJER"), async (req, res) => {
@@ -121,3 +112,51 @@ router.get("/top-products", requireAuth, requireRole("ADMIN", "MANAJER"), async 
 });
 
 export default router;
+
+async function calculateProfitLoss(from: Date, to: Date) {
+  const [salesRows, returnsRows, costRows, returnedCostRows, expenseRows] = await Promise.all([
+    prisma.$queryRaw<{ transactions: number; revenue: number }[]>`
+      SELECT COUNT(*)::int AS transactions, COALESCE(SUM(total), 0)::int AS revenue
+      FROM "Sale"
+      WHERE status = 'COMPLETED' AND "createdAt" >= ${from} AND "createdAt" <= ${to}
+    `,
+    prisma.$queryRaw<{ refunds: number }[]>`
+      SELECT COALESCE(SUM("totalRefund"), 0)::int AS refunds
+      FROM "SaleReturn"
+      WHERE "createdAt" >= ${from} AND "createdAt" <= ${to}
+    `,
+    prisma.$queryRaw<{ cost: number }[]>`
+      SELECT COALESCE(SUM(si.quantity * si."unitCost"), 0)::int AS cost
+      FROM "SaleItem" si
+      JOIN "Sale" s ON s.id = si."saleId"
+      WHERE s.status = 'COMPLETED' AND s."createdAt" >= ${from} AND s."createdAt" <= ${to}
+    `,
+    prisma.$queryRaw<{ cost: number }[]>`
+      SELECT COALESCE(SUM(sri.quantity * si."unitCost"), 0)::int AS cost
+      FROM "SaleReturnItem" sri
+      JOIN "SaleReturn" sr ON sr.id = sri."saleReturnId"
+      JOIN "SaleItem" si ON si.id = sri."saleItemId"
+      WHERE sr."createdAt" >= ${from} AND sr."createdAt" <= ${to}
+    `,
+    prisma.expense.aggregate({
+      where: { incurredAt: { gte: from, lte: to } },
+      _sum: { amount: true },
+    }),
+  ]);
+  const sales = salesRows[0];
+  const returns = returnsRows[0];
+  const cost = costRows[0];
+  const returnedCost = returnedCostRows[0];
+  const revenue = sales.revenue - returns.refunds;
+  const netCost = cost.cost - returnedCost.cost;
+  const expenses = expenseRows._sum.amount ?? 0;
+  return {
+    transactions: sales.transactions,
+    grossRevenue: sales.revenue,
+    refunds: returns.refunds,
+    revenue,
+    cost: netCost,
+    expenses,
+    profit: revenue - netCost - expenses,
+  };
+}
