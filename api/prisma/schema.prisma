@@ -21,6 +21,7 @@ enum MovementType {
   SALE
   VOID
   PURCHASE
+  OPNAME
 }
 
 enum PurchaseOrderStatus {
@@ -29,6 +30,11 @@ enum PurchaseOrderStatus {
   PARTIAL
   RECEIVED
   CANCELLED
+}
+
+enum StockOpnameStatus {
+  DRAFT
+  FINALIZED
 }
 
 enum PaymentMethod {
@@ -55,6 +61,7 @@ model User {
   auditLogs    AuditLog[]
   purchaseOrders PurchaseOrder[] @relation("PurchaseOrderCreator")
   goodsReceipts  GoodsReceipt[]   @relation("GoodsReceiptCreator")
+  stockOpnames   StockOpname[]    @relation("StockOpnameCreator")
 }
 
 model AuditLog {
@@ -77,6 +84,7 @@ model Category {
   id       Int       @id @default(autoincrement())
   name     String    @unique
   products Product[]
+  stockOpnames StockOpname[]
 }
 
 model Product {
@@ -93,6 +101,7 @@ model Product {
   movements  StockMovement[]
   saleItems  SaleItem[]
   purchaseOrderItems PurchaseOrderItem[]
+  stockOpnameItems StockOpnameItem[]
 }
 
 model StockMovement {
@@ -108,6 +117,8 @@ model StockMovement {
   sale        Sale?        @relation(fields: [saleId], references: [id])
   goodsReceiptId Int?
   goodsReceipt GoodsReceipt? @relation(fields: [goodsReceiptId], references: [id])
+  stockOpnameId Int?
+  stockOpname StockOpname? @relation(fields: [stockOpnameId], references: [id])
   createdAt   DateTime     @default(now())
 
   @@index([productId])
@@ -175,6 +186,37 @@ model GoodsReceiptItem {
   quantity            Int
 
   @@unique([goodsReceiptId, purchaseOrderItemId])
+}
+
+model StockOpname {
+  id           Int               @id @default(autoincrement())
+  opnameNumber String            @unique
+  status       StockOpnameStatus @default(DRAFT)
+  notes        String?
+  categoryId   Int?
+  category     Category?         @relation(fields: [categoryId], references: [id])
+  createdById  Int
+  createdBy    User              @relation("StockOpnameCreator", fields: [createdById], references: [id])
+  createdAt    DateTime          @default(now())
+  finalizedAt  DateTime?
+  items        StockOpnameItem[]
+  movements    StockMovement[]
+
+  @@index([status, createdAt])
+}
+
+model StockOpnameItem {
+  id             Int         @id @default(autoincrement())
+  stockOpnameId  Int
+  stockOpname    StockOpname @relation(fields: [stockOpnameId], references: [id], onDelete: Cascade)
+  productId      Int
+  product        Product     @relation(fields: [productId], references: [id])
+  systemQty      Int
+  countedQty     Int?
+  difference     Int?
+  unitCostAtOpen Int
+
+  @@unique([stockOpnameId, productId])
 }
 
 model Sale {

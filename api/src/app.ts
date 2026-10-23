@@ -12,6 +12,7 @@ import reportRoutes from "./routes/reports";
 import auditLogRoutes from "./routes/audit-logs";
 import supplierRoutes from "./routes/suppliers";
 import purchaseOrderRoutes from "./routes/purchase-orders";
+import stockOpnameRoutes from "./routes/stock-opnames";
 
 export function createApp() {
   const app = express();
@@ -32,6 +33,7 @@ export function createApp() {
   app.use("/api/audit-logs", auditLogRoutes);
   app.use("/api/suppliers", supplierRoutes);
   app.use("/api/purchase-orders", purchaseOrderRoutes);
+  app.use("/api/stock-opnames", stockOpnameRoutes);
 
   app.use(errorHandler);
   return app;

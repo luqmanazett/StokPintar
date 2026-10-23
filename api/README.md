@@ -20,3 +20,7 @@ Peran yang tersedia: ADMIN, MANAJER, GUDANG, dan KASIR. ADMIN mengelola semua fi
 ## Pembelian
 
 Pemasok dikelola melalui `/api/suppliers`. Siklus PO tersedia di `/api/purchase-orders`: buat dan ubah saat DRAFT, kirim, batalkan, lihat daftar/detail, lalu catat penerimaan sebagian atau penuh. Setiap penerimaan membuat `GoodsReceipt` dan `StockMovement` bertipe `PURCHASE` dalam satu transaksi, memperbarui jumlah diterima, dan menghitung ulang modal rata-rata tertimbang produk.
+
+## Stok opname
+
+`/api/stock-opnames` membuat snapshot semua produk aktif atau satu kategori. Gudang mengisi hitungan fisik; ADMIN/MANAJER memfinalisasi dalam transaksi yang mengunci baris produk. Jika ledger berubah sejak snapshot, selisih dihitung dari stok terkini dan endpoint finalisasi mengembalikan daftar peringatan.

@@ -70,6 +70,8 @@ const movementLabels: Record<string, string> = {
   ADJUSTMENT: "Penyesuaian",
   SALE: "Penjualan",
   VOID: "Pembatalan",
+  PURCHASE: "Pembelian",
+  OPNAME: "Stok opname",
 };
 
 function validateProduct(form: ProductForm): FormErrors {
