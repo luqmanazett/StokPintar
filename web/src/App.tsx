@@ -9,6 +9,7 @@ import {
   Package,
   ShoppingCart,
   Store,
+  ScrollText,
   UserPlus,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -24,27 +25,31 @@ import Products from "./pages/Products";
 import Transactions from "./pages/Transactions";
 import Categories from "./pages/Categories";
 import CashierAccounts from "./pages/CashierAccounts";
+import AuditLogs from "./pages/AuditLogs";
 import NotFound from "./pages/NotFound";
+
+type Role = "ADMIN" | "MANAJER" | "GUDANG" | "KASIR";
 
 type User = {
   name?: string;
-  role?: "ADMIN" | "KASIR";
+  role?: Role;
 };
 
 type NavigationItem = {
   label: string;
   href: string;
   icon: LucideIcon;
-  adminOnly?: boolean;
+  roles?: Role[];
 };
 
 const navigation: NavigationItem[] = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
   { label: "Produk", href: "/products", icon: Package },
-  { label: "Kasir", href: "/cashier", icon: ShoppingCart },
-  { label: "Transaksi", href: "/transactions", icon: ClipboardList },
-  { label: "Kategori", href: "/categories", icon: FolderTree, adminOnly: true },
-  { label: "Akun kasir", href: "/cashier-accounts", icon: UserPlus, adminOnly: true },
+  { label: "Kasir", href: "/cashier", icon: ShoppingCart, roles: ["ADMIN", "KASIR"] },
+  { label: "Transaksi", href: "/transactions", icon: ClipboardList, roles: ["ADMIN", "MANAJER", "KASIR"] },
+  { label: "Kategori", href: "/categories", icon: FolderTree, roles: ["ADMIN"] },
+  { label: "Akun", href: "/cashier-accounts", icon: UserPlus, roles: ["ADMIN"] },
+  { label: "Log audit", href: "/audit-logs", icon: ScrollText, roles: ["ADMIN"] },
 ];
 
 const pageTitles: Record<string, string> = {
@@ -54,7 +59,8 @@ const pageTitles: Record<string, string> = {
   "/cashier": "Kasir",
   "/transactions": "Riwayat transaksi",
   "/categories": "Kategori",
-  "/cashier-accounts": "Akun kasir",
+  "/cashier-accounts": "Akun pengguna",
+  "/audit-logs": "Log audit",
 };
 
 function PageTitle() {
@@ -76,8 +82,13 @@ function Sidebar({
   onNavigate?: () => void;
   onLogout: () => void;
 }) {
-  // Menu khusus admin tidak ditampilkan untuk akun kasir.
-  const items = navigation.filter((item) => !item.adminOnly || user?.role === "ADMIN");
+  const items = navigation.filter((item) => !item.roles || (user?.role && item.roles.includes(user.role)));
+  const roleLabels: Record<Role, string> = {
+    ADMIN: "Administrator",
+    MANAJER: "Manajer",
+    GUDANG: "Gudang",
+    KASIR: "Kasir",
+  };
 
   return (
     <div className="flex h-full flex-col bg-white">
@@ -121,7 +132,7 @@ function Sidebar({
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-slate-800">{user?.name || "Pengguna"}</p>
-            <p className="text-xs text-muted-foreground">{user?.role === "ADMIN" ? "Administrator" : "Kasir"}</p>
+            <p className="text-xs text-muted-foreground">{user?.role ? roleLabels[user.role] : "Pengguna"}</p>
           </div>
         </div>
         <Button variant="ghost" className="mt-1 w-full justify-start text-slate-600 hover:text-red-600" onClick={onLogout}>
@@ -133,9 +144,9 @@ function Sidebar({
   );
 }
 
-function AdminRoute({ children }: { children: ReactNode }) {
+function RoleRoute({ children, roles }: { children: ReactNode; roles: Role[] }) {
   const user = JSON.parse(localStorage.getItem("user") ?? "null") as User | null;
-  return user?.role === "ADMIN" ? children : <Navigate to="/" replace />;
+  return user?.role && roles.includes(user.role) ? children : <Navigate to="/" replace />;
 }
 
 function Layout() {
@@ -191,10 +202,11 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/products" element={<Products />} />
-          <Route path="/cashier" element={<Cashier />} />
-          <Route path="/transactions" element={<Transactions />} />
-          <Route path="/categories" element={<AdminRoute><Categories /></AdminRoute>} />
-          <Route path="/cashier-accounts" element={<AdminRoute><CashierAccounts /></AdminRoute>} />
+          <Route path="/cashier" element={<RoleRoute roles={["ADMIN", "KASIR"]}><Cashier /></RoleRoute>} />
+          <Route path="/transactions" element={<RoleRoute roles={["ADMIN", "MANAJER", "KASIR"]}><Transactions /></RoleRoute>} />
+          <Route path="/categories" element={<RoleRoute roles={["ADMIN"]}><Categories /></RoleRoute>} />
+          <Route path="/cashier-accounts" element={<RoleRoute roles={["ADMIN"]}><CashierAccounts /></RoleRoute>} />
+          <Route path="/audit-logs" element={<RoleRoute roles={["ADMIN"]}><AuditLogs /></RoleRoute>} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>

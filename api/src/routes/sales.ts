@@ -5,6 +5,7 @@ import { prisma } from "../db";
 import { AppError } from "../middlewares/error";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { getStock } from "../services/stock";
+import { audit } from "../services/audit";
 
 const router = Router();
 
@@ -21,7 +22,7 @@ const saleSchema = z.object({
   paymentMethod: z.enum(["CASH", "TRANSFER", "QRIS"]),
 });
 
-router.post("/", requireAuth, async (req, res) => {
+router.post("/", requireAuth, requireRole("ADMIN", "KASIR"), async (req, res) => {
   const data = saleSchema.parse(req.body);
 
   // gabungkan baris yang produknya sama
@@ -83,13 +84,33 @@ router.post("/", requireAuth, async (req, res) => {
       })),
     });
 
+    await audit(tx, {
+      userId: req.user!.id,
+      action: "SALE_CREATE",
+      entity: "Sale",
+      entityId: created.id,
+      after: {
+        subtotal: created.subtotal,
+        discount: created.discount,
+        total: created.total,
+        paymentMethod: created.paymentMethod,
+        items: items.map(({ productId, quantity, unitPrice, unitCost }) => ({
+          productId,
+          quantity,
+          unitPrice,
+          unitCost,
+        })),
+      },
+      ip: req.ip,
+    });
+
     return created;
   });
 
   res.status(201).json(sale);
 });
 
-router.get("/", requireAuth, async (req, res) => {
+router.get("/", requireAuth, requireRole("ADMIN", "MANAJER", "KASIR"), async (req, res) => {
   const where: Prisma.SaleWhereInput = {};
   if (req.user!.role === "KASIR") where.cashierId = req.user!.id;
 
@@ -111,10 +132,11 @@ router.get("/", requireAuth, async (req, res) => {
   );
 });
 
-router.post("/:id/void", requireAuth, requireRole("ADMIN"), async (req, res) => {
+router.post("/:id/void", requireAuth, requireRole("ADMIN", "MANAJER"), async (req, res) => {
   const id = Number(req.params.id);
 
   await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "Sale" WHERE id = ${id} FOR UPDATE`;
     const sale = await tx.sale.findUnique({ where: { id }, include: { items: true } });
     if (!sale) throw new AppError(404, "Transaksi tidak ditemukan");
     if (sale.status === "VOIDED") throw new AppError(409, "Transaksi sudah didatalkan");
@@ -130,6 +152,15 @@ router.post("/:id/void", requireAuth, requireRole("ADMIN"), async (req, res) => 
         createdById: req.user!.id,
         note: "Pembatalan transaksi",
       })),
+    });
+    await audit(tx, {
+      userId: req.user!.id,
+      action: "SALE_VOID",
+      entity: "Sale",
+      entityId: id,
+      before: { status: sale.status, total: sale.total },
+      after: { status: "VOIDED", total: sale.total },
+      ip: req.ip,
     });
   });
 

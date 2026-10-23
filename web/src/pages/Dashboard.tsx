@@ -93,7 +93,8 @@ function StatCard({
 
 export default function Dashboard() {
   const user = JSON.parse(localStorage.getItem("user") ?? "null") as User;
-  const isAdmin = user?.role === "ADMIN";
+  const canViewReports = user?.role === "ADMIN" || user?.role === "MANAJER";
+  const canViewSales = canViewReports || user?.role === "KASIR";
   const [period, setPeriod] = useState<7 | 30>(7);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
@@ -117,14 +118,19 @@ export default function Dashboard() {
         .catch((error: Error) => {
           failures.push(`Stok menipis: ${error.message}`);
         }),
-      api<Sale[]>("/sales")
-        .then(setSales)
-        .catch((error: Error) => {
-          failures.push(`Transaksi: ${error.message}`);
-        }),
     ];
 
-    if (isAdmin) {
+    if (canViewSales) {
+      requests.push(
+        api<Sale[]>("/sales")
+          .then(setSales)
+          .catch((error: Error) => {
+            failures.push(`Transaksi: ${error.message}`);
+          }),
+      );
+    }
+
+    if (canViewReports) {
       requests.push(
         api<Summary>("/reports/summary" + todayQuery)
           .then(setSummary)
@@ -148,7 +154,7 @@ export default function Dashboard() {
     setErrors(failures);
     if (failures.length > 0) toast.error(failures[0]);
     setIsLoading(false);
-  }, [isAdmin, period]);
+  }, [canViewReports, canViewSales, period]);
 
   useEffect(() => {
     void load();
@@ -161,7 +167,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       <PageHeader
         title="Dashboard"
-        description={isAdmin ? "Pantau ringkasan aktivitas dan penjualan toko." : "Pantau stok dan transaksi penjualan Anda."}
+        description={canViewReports ? "Pantau ringkasan aktivitas dan penjualan toko." : user?.role === "KASIR" ? "Pantau stok dan transaksi penjualan Anda." : "Pantau ketersediaan stok produk toko."}
       />
 
       {errors.length > 0 && (
@@ -171,7 +177,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {isAdmin && (
+      {canViewReports && (
         <section aria-label="Ringkasan penjualan" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {isLoading ? (
             Array.from({ length: 3 }, (_, index) => <Skeleton key={index} className="h-32 rounded-xl" />)
@@ -189,7 +195,7 @@ export default function Dashboard() {
         </section>
       )}
 
-      {isAdmin && (
+      {canViewReports && (
         <Card className="p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -228,7 +234,7 @@ export default function Dashboard() {
       )}
 
       <div className="grid gap-6 xl:grid-cols-2">
-        {isAdmin && (
+        {canViewReports && (
           <Card className="p-5">
             <div className="flex items-center gap-2">
               <ChartNoAxesCombined className="size-5 text-indigo-600" aria-hidden="true" />
@@ -298,13 +304,13 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <Card className="overflow-hidden">
+      {canViewSales && <Card className="overflow-hidden">
         <div className="flex items-center gap-2 px-5 pb-3 pt-5">
           <Activity className="size-5 text-indigo-600" aria-hidden="true" />
           <div>
             <h2 className="font-semibold text-slate-900">Transaksi terbaru</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {isAdmin ? "5 transaksi terbaru dari seluruh kasir." : "5 transaksi terbaru milik Anda."}
+              {canViewReports ? "5 transaksi terbaru dari seluruh kasir." : "5 transaksi terbaru milik Anda."}
             </p>
           </div>
         </div>
@@ -324,7 +330,7 @@ export default function Dashboard() {
               <thead className="border-y bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-5 py-3 font-medium">Transaksi</th>
-                  {isAdmin && <th className="px-5 py-3 font-medium">Kasir</th>}
+                  {canViewReports && <th className="px-5 py-3 font-medium">Kasir</th>}
                   <th className="px-5 py-3 font-medium">Item</th>
                   <th className="px-5 py-3 font-medium">Waktu</th>
                   <th className="px-5 py-3 font-medium">Status</th>
@@ -335,7 +341,7 @@ export default function Dashboard() {
                 {recentSales.map((sale) => (
                   <tr key={sale.id} className="hover:bg-slate-50/70">
                     <td className="px-5 py-3 font-medium text-slate-800">#{sale.id}</td>
-                    {isAdmin && <td className="px-5 py-3 text-slate-600">{sale.cashier.name}</td>}
+                    {canViewReports && <td className="px-5 py-3 text-slate-600">{sale.cashier.name}</td>}
                     <td className="max-w-48 truncate px-5 py-3 text-slate-600">
                       {sale.items.map((item) => item.product.name).join(", ")}
                     </td>
@@ -354,7 +360,7 @@ export default function Dashboard() {
             </table>
           </div>
         )}
-      </Card>
+      </Card>}
     </div>
   );
 }

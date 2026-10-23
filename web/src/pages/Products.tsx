@@ -91,7 +91,7 @@ function stockStatus(product: Product) {
 
 export default function Products() {
   const user = JSON.parse(localStorage.getItem("user") ?? "null") as User;
-  const isAdmin = user?.role === "ADMIN";
+  const canManageProducts = user?.role === "ADMIN" || user?.role === "GUDANG";
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState("");
@@ -333,7 +333,7 @@ export default function Products() {
               ))}
             </select>
           </div>
-          {isAdmin && (
+          {canManageProducts && (
             <Button onClick={openCreateDialog} disabled={categories.length === 0}>
               <Plus className="size-4" aria-hidden="true" />
               Tambah produk
@@ -351,15 +351,15 @@ export default function Products() {
               <TableHead>Kategori</TableHead>
               <TableHead>Harga jual</TableHead>
               <TableHead>Stok</TableHead>
-              {isAdmin && <TableHead className="text-right">Aksi</TableHead>}
-              {!isAdmin && <TableHead className="text-right">Riwayat</TableHead>}
+              {canManageProducts && <TableHead className="text-right">Aksi</TableHead>}
+              {!canManageProducts && <TableHead className="text-right">Riwayat</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               Array.from({ length: 5 }, (_, row) => (
                 <TableRow key={row}>
-                  {Array.from({ length: isAdmin ? 6 : 6 }, (_, cell) => (
+                  {Array.from({ length: 6 }, (_, cell) => (
                     <TableCell key={cell}><Skeleton className="h-5 w-24" /></TableCell>
                   ))}
                 </TableRow>
@@ -373,7 +373,7 @@ export default function Products() {
                   <p className="mt-1 text-sm text-muted-foreground">
                     {products.length === 0 ? "Tambahkan produk untuk mulai mengelola stok toko." : "Ubah kata kunci atau filter kategori."}
                   </p>
-                  {isAdmin && products.length === 0 && (
+                  {canManageProducts && products.length === 0 && (
                     <Button variant="outline" size="sm" className="mt-3" onClick={openCreateDialog} disabled={categories.length === 0}>
                       <Plus className="size-4" aria-hidden="true" />
                       Tambah produk
@@ -399,7 +399,7 @@ export default function Products() {
                           <History className="size-4" aria-hidden="true" />
                           <span className="hidden lg:inline">Riwayat</span>
                         </Button>
-                        {isAdmin && (
+                        {canManageProducts && (
                           <>
                             <Button variant="ghost" size="sm" onClick={() => openStockDialog(product)} aria-label={`Tambah stok ${product.name}`}>
                               <PackagePlus className="size-4" aria-hidden="true" />

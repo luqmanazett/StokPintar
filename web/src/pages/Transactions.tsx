@@ -59,7 +59,8 @@ function todayInJakarta() {
 
 export default function Transactions() {
   const user = JSON.parse(localStorage.getItem("user") ?? "null") as User;
-  const isAdmin = user?.role === "ADMIN";
+  const canSeeCashier = user?.role !== "KASIR";
+  const canVoidSales = user?.role === "ADMIN" || user?.role === "MANAJER";
   const [from, setFrom] = useState(todayInJakarta());
   const [to, setTo] = useState(todayInJakarta());
   const [appliedRange, setAppliedRange] = useState({ from: todayInJakarta(), to: todayInJakarta() });
@@ -147,7 +148,7 @@ export default function Transactions() {
             <TableRow>
               <TableHead>No. transaksi</TableHead>
               <TableHead>Waktu</TableHead>
-              {isAdmin && <TableHead>Kasir</TableHead>}
+              {canSeeCashier && <TableHead>Kasir</TableHead>}
               <TableHead>Pembayaran</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Total</TableHead>
@@ -158,14 +159,14 @@ export default function Transactions() {
             {isLoading ? (
               Array.from({ length: 5 }, (_, row) => (
                 <TableRow key={row}>
-                  {Array.from({ length: isAdmin ? 7 : 6 }, (_, cell) => (
+                  {Array.from({ length: canSeeCashier ? 7 : 6 }, (_, cell) => (
                     <TableCell key={cell}><Skeleton className="h-5 w-24" /></TableCell>
                   ))}
                 </TableRow>
               ))
             ) : sales.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={isAdmin ? 7 : 6} className="h-28 text-center text-muted-foreground">
+                <TableCell colSpan={canSeeCashier ? 7 : 6} className="h-28 text-center text-muted-foreground">
                   {error ? "Data transaksi belum dapat ditampilkan." : "Belum ada transaksi pada rentang tanggal ini."}
                 </TableCell>
               </TableRow>
@@ -174,7 +175,7 @@ export default function Transactions() {
                 <TableRow key={sale.id}>
                   <TableCell className="font-medium">#{sale.id}</TableCell>
                   <TableCell className="whitespace-nowrap">{dateFormatter.format(new Date(sale.createdAt))} WIB</TableCell>
-                  {isAdmin && <TableCell>{sale.cashier.name}</TableCell>}
+                  {canSeeCashier && <TableCell>{sale.cashier.name}</TableCell>}
                   <TableCell>{methodLabels[sale.paymentMethod] ?? sale.paymentMethod}</TableCell>
                   <TableCell>
                     <Badge variant={sale.status === "COMPLETED" ? "success" : "destructive"}>
@@ -222,7 +223,7 @@ export default function Transactions() {
                 <div className="flex justify-between border-t pt-2 text-base font-semibold"><span>Total</span><span>{rupiah(selectedSale.total)}</span></div>
                 <div className="flex justify-between"><span>Metode pembayaran</span><span>{methodLabels[selectedSale.paymentMethod] ?? selectedSale.paymentMethod}</span></div>
               </div>
-              {isAdmin && selectedSale.status === "COMPLETED" && (
+              {canVoidSales && selectedSale.status === "COMPLETED" && (
                 <DialogFooter>
                   <Button variant="destructive" onClick={() => setVoidingSale(selectedSale)}>Batalkan transaksi</Button>
                 </DialogFooter>

@@ -9,6 +9,8 @@ datasource db {
 
 enum Role {
   ADMIN
+  MANAJER
+  GUDANG
   KASIR
 }
 
@@ -41,6 +43,23 @@ model User {
   createdAt    DateTime        @default(now())
   sales        Sale[]
   movements    StockMovement[]
+  auditLogs    AuditLog[]
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  Int?
+  before    Json?
+  after     Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([entity, createdAt])
 }
 
 model Category {

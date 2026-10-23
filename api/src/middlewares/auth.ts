@@ -1,10 +1,13 @@
 import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
+import jwt, { type JwtPayload } from "jsonwebtoken";
+import { prisma } from "../db";
 import { AppError } from "./error";
+
+export const roles = ["ADMIN", "MANAJER", "GUDANG", "KASIR"] as const;
 
 export interface AuthUser {
   id: number;
-  role: "ADMIN" | "KASIR";
+  role: (typeof roles)[number];
 }
 
 declare global {
@@ -15,18 +18,30 @@ declare global {
   }
 }
 
-export function requireAuth(req: Request, _res: Response, next: NextFunction) {
+export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) throw new AppError(401, "Silakan login dulu");
 
-  let payload: AuthUser;
+  let payload: JwtPayload;
   try {
-    payload = jwt.verify(header.slice(7), process.env.JWT_SECRET!) as AuthUser;
+    const verified = jwt.verify(header.slice(7), process.env.JWT_SECRET!);
+    if (typeof verified === "string") throw new Error("Payload token tidak valid");
+    payload = verified;
   } catch {
     throw new AppError(401, "Token tidak valid atau sudah kedaluwarsa");
   }
 
-  req.user = { id: payload.id, role: payload.role };
+  if (typeof payload.id !== "number" || !Number.isInteger(payload.id)) {
+    throw new AppError(401, "Token tidak valid atau sudah kedaluwarsa");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: payload.id },
+    select: { id: true, role: true, isActive: true },
+  });
+  if (!user?.isActive) throw new AppError(401, "Akun tidak aktif atau tidak ditemukan");
+
+  req.user = { id: user.id, role: user.role };
   next();
 }
 

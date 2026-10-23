@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "../src/db";
 
 export async function resetDatabase() {
+  await prisma.auditLog.deleteMany();
   await prisma.stockMovement.deleteMany();
   await prisma.saleItem.deleteMany();
   await prisma.sale.deleteMany();
@@ -12,7 +13,7 @@ export async function resetDatabase() {
 }
 
 export async function createUser(
-  role: "ADMIN" | "KASIR" = "KASIR",
+  role: "ADMIN" | "MANAJER" | "GUDANG" | "KASIR" = "KASIR",
   values: { name?: string; email?: string; password?: string } = {},
 ) {
   const name = values.name ?? `${role} Test`;

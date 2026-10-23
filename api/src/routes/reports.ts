@@ -10,7 +10,7 @@ const rangeSchema = z.object({
   to: z.coerce.date(),
 });
 
-router.get("/summary", requireAuth, requireRole("ADMIN"), async (req, res) => {
+router.get("/summary", requireAuth, requireRole("ADMIN", "MANAJER"), async (req, res) => {
   const { from, to } = rangeSchema.parse(req.query);
 
   const [sales] = await prisma.$queryRaw<{ transactions: number; revenue: number }[]>`
@@ -29,7 +29,7 @@ router.get("/summary", requireAuth, requireRole("ADMIN"), async (req, res) => {
   res.json({ ...sales, profit: sales.revenue - cost.cost });
 });
 
-router.get("/daily", requireAuth, requireRole("ADMIN"), async (req, res) => {
+router.get("/daily", requireAuth, requireRole("ADMIN", "MANAJER"), async (req, res) => {
   const { from, to } = rangeSchema.parse(req.query);
 
   const rows = await prisma.$queryRaw`
@@ -43,7 +43,7 @@ router.get("/daily", requireAuth, requireRole("ADMIN"), async (req, res) => {
   res.json(rows);
 });
 
-router.get("/top-products", requireAuth, requireRole("ADMIN"), async (req, res) => {
+router.get("/top-products", requireAuth, requireRole("ADMIN", "MANAJER"), async (req, res) => {
   const { from, to } = rangeSchema.parse(req.query);
 
   const rows = await prisma.$queryRaw`
