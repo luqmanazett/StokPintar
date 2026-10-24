@@ -507,6 +507,10 @@ Lighthouse dijalankan dengan preset desktop pada build produksi Vite, memakai co
 
 `npm audit` melaporkan nol kerentanan dan `npm run build` berhasil; lint juga berhasil dengan 16 peringatan `react(set-state-in-effect)` yang sudah ada pada halaman lain. Dashboard tetap memiliki peluang optimasi pemuatan yang kecil, tetapi skor performanya tidak berubah; audit lokal memakai Chrome dengan pemeriksaan CORS dinonaktifkan agar dashboard dapat memanggil API pada port preview.
 
+## Showcase 10 — README portofolio
+
+README sekarang menampilkan badge status workflow GitHub Actions, daftar fitur, diagram arsitektur, serta ERD Mermaid yang merangkum relasi data Prisma. Screenshot desktop dan mobile, petunjuk menjalankan dengan Docker maupun secara manual, serta akun demo tersedia agar pembaca dapat mencoba proyek secara lokal. Tautan repositori mengarah ke GitHub StokPintar, sementara demo online ditandai belum tersedia sampai alamat deploy diberikan.
+
 ## M10 — Docker, CI, dan dokumentasi akhir
 
 ### 1. Masalah bisnis yang diselesaikan
