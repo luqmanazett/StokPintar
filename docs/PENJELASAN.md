@@ -464,11 +464,13 @@ Barcode duplikat ditolak dengan konflik sehingga nilainya tidak menimpa produk l
 3. **Bagaimana mencegah kode scan yang sama memilih beberapa produk?**
    Database menerapkan indeks unik, dan API memeriksa duplikasi sebelum menyimpan; barcode yang sama tidak dapat terpasang pada dua produk.
 
+## Showcase 1 — Mode demo
+
+Mode demo memudahkan reviewer mencoba aplikasi memakai akun ADMIN, MANAJER, GUDANG, atau KASIR tanpa mengetik kredensial secara manual. Tombol **Masuk sebagai ...** hanya dimasukkan ke build frontend ketika environment `DEMO_MODE=true`; pada nilai default `false`, tombol tidak dirender dan form login tetap menggunakan email serta kata sandi yang diketik pengguna. Setiap tombol mengirim request login biasa ke endpoint yang sudah ada, jadi validasi akun dan penerbitan token tetap dilakukan oleh API tanpa perubahan kontrak. Kredensial demo sama dengan akun seed dan hanya boleh digunakan pada lingkungan demo yang memang diisi data contoh.
+
 ## M10 — Docker, CI, dan dokumentasi akhir
 
 ### 1. Masalah bisnis yang diselesaikan
-
-Menjalankan aplikasi dengan konfigurasi berbeda di setiap komputer membuat setup dan pemeriksaan perubahan lebih rentan gagal. M10 menyediakan cara menjalankan web, API, dan PostgreSQL secara konsisten lewat Docker Compose, serta menjalankan build dan tes otomatis saat kode didorong atau pull request dibuat.
 
 ### 2. Tabel dan relasinya
 

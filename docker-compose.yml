@@ -50,6 +50,7 @@ services:
       context: ./web
       args:
         VITE_API_URL: /api
+        DEMO_MODE: ${DEMO_MODE:-false}
     ports:
       - "8080:80"
     depends_on:

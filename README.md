@@ -16,6 +16,8 @@ docker compose ps
 
 Compose menjalankan PostgreSQL, menerapkan migrasi Prisma, lalu memulai API dan web. Buka aplikasi di <http://localhost:8080>. API hanya tersedia melalui reverse proxy web; database juga tidak membuka port ke host.
 
+Tombol login cepat empat role hanya ditanam ke build web jika `DEMO_MODE=true`. Untuk mengaktifkannya pada Docker lokal, ubah nilai tersebut di `.env`, lalu bangun ulang web dengan `docker compose build --no-cache web` dan jalankan `docker compose up -d`. Biarkan `DEMO_MODE=false` untuk build non-demo.
+
 Untuk mengisi data contoh di instalasi lokal:
 
 ```powershell

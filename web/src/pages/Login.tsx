@@ -9,11 +9,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function Login() {
-  const [email, setEmail] = useState("admin@stokpintar.test");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const isDemoMode = import.meta.env.VITE_DEMO_MODE;
+
+  const demoAccounts = [
+    { role: "ADMIN", label: "Admin", email: "admin@stokpintar.test", password: "admin123" },
+    { role: "MANAJER", label: "Manajer", email: "manajer@stokpintar.test", password: "manajer123" },
+    { role: "GUDANG", label: "Gudang", email: "gudang@stokpintar.test", password: "gudang123" },
+    { role: "KASIR", label: "Kasir", email: "kasir@stokpintar.test", password: "kasir123" },
+  ];
 
   useEffect(() => {
     if (sessionStorage.getItem("stokpintar-session-ended") === "true") {
@@ -22,14 +30,13 @@ export default function Login() {
     }
   }, []);
 
-  async function submit(e: FormEvent) {
-    e.preventDefault();
+  async function login(loginEmail: string, loginPassword: string) {
     setError("");
     setIsLoading(true);
     try {
       const data = await api<{ token: string; user: object }>("/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
       });
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
@@ -39,6 +46,11 @@ export default function Login() {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    void login(email, password);
   }
 
   return (
@@ -66,6 +78,24 @@ export default function Login() {
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? "Memproses..." : "Masuk"}
           </Button>
+          {isDemoMode && (
+            <div className="space-y-3 border-t pt-4">
+              <p className="text-center text-sm font-medium text-slate-700">Masuk cepat untuk demo</p>
+              <div className="grid grid-cols-2 gap-2">
+                {demoAccounts.map((account) => (
+                  <Button
+                    key={account.role}
+                    type="button"
+                    variant="outline"
+                    disabled={isLoading}
+                    onClick={() => void login(account.email, account.password)}
+                  >
+                    Masuk sebagai {account.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
         </form>
       </Card>
     </div>
