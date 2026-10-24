@@ -97,6 +97,15 @@ function PageTitle() {
   return null;
 }
 
+function DemoBanner() {
+  if (!import.meta.env.VITE_DEMO_MODE) return null;
+  return (
+    <div className="bg-amber-50 px-4 py-2 text-center text-xs font-medium text-amber-900" role="status">
+      Mode demo: data direset tiap malam pukul 03.00 WIB
+    </div>
+  );
+}
+
 function Sidebar({
   user,
   onNavigate,
@@ -221,6 +230,7 @@ export default function App() {
     <BrowserRouter>
       <PageTitle />
       <Toaster />
+      <DemoBanner />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route element={<Layout />}>

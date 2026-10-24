@@ -10,6 +10,7 @@
     "test": "node scripts/with-test-db.cjs vitest run",
     "test:watch": "node scripts/with-test-db.cjs vitest",
     "test:db:deploy": "node scripts/with-test-db.cjs prisma migrate deploy",
+    "seed:demo": "tsx prisma/seed-demo.ts",
     "db:seed": "prisma db seed",
     "db:check": "tsx scripts/check-integrity.ts"
   },

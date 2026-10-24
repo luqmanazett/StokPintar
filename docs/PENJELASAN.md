@@ -468,6 +468,10 @@ Barcode duplikat ditolak dengan konflik sehingga nilainya tidak menimpa produk l
 
 Mode demo memudahkan reviewer mencoba aplikasi memakai akun ADMIN, MANAJER, GUDANG, atau KASIR tanpa mengetik kredensial secara manual. Tombol **Masuk sebagai ...** hanya dimasukkan ke build frontend ketika environment `DEMO_MODE=true`; pada nilai default `false`, tombol tidak dirender dan form login tetap menggunakan email serta kata sandi yang diketik pengguna. Setiap tombol mengirim request login biasa ke endpoint yang sudah ada, jadi validasi akun dan penerbitan token tetap dilakukan oleh API tanpa perubahan kontrak. Kredensial demo sama dengan akun seed dan hanya boleh digunakan pada lingkungan demo yang memang diisi data contoh.
 
+## Showcase 2 — Reset demo otomatis
+
+Saat `DEMO_MODE=true`, API menjadwalkan reset setiap hari pukul 03.00 WIB memakai timer bawaan Node.js dan menjalankan `npm run seed:demo`; UI juga menampilkan banner bahwa data demo direset tiap malam. Skrip menghapus data terkait dalam satu transaksi lalu menjalankan seed demo kembali, sehingga akun dan contoh data kembali ke kondisi awal secara konsisten. Demi mencegah kehilangan data nyata, reset hanya diizinkan pada database khusus bernama `stokpintar_demo` dan memerlukan konfirmasi eksplisit, termasuk jika berjalan di server produksi. Penjadwal tidak berjalan saat mode demo mati, dan tidak menambah dependensi baru.
+
 ## M10 — Docker, CI, dan dokumentasi akhir
 
 ### 1. Masalah bisnis yang diselesaikan

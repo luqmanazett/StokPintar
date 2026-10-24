@@ -1,10 +1,10 @@
 import "dotenv/config";
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const DEMO_SALE_DATE = new Date("2026-10-01T10:00:00.000Z");
 
-export async function seedDemo(client: PrismaClient) {
+export async function seedDemo(client: PrismaClient | Prisma.TransactionClient) {
   const accounts = [
     { name: "Admin Toko", email: "admin@stokpintar.test", password: "admin123", role: "ADMIN" as const },
     { name: "Manajer Toko", email: "manajer@stokpintar.test", password: "manajer123", role: "MANAJER" as const },
@@ -122,7 +122,7 @@ export async function seedDemo(client: PrismaClient) {
     _sum: { change: true },
   });
   if (!demoSale && (stock._sum.change ?? 0) >= 2) {
-    await client.$transaction(async (tx) => {
+    const createDemoSale = async (tx: Prisma.TransactionClient) => {
       const sale = await tx.sale.create({
         data: {
           cashierId: cashier.id,
@@ -167,7 +167,10 @@ export async function seedDemo(client: PrismaClient) {
           createdAt: DEMO_SALE_DATE,
         },
       });
-    });
+    };
+
+    if ("$transaction" in client) await client.$transaction(createDemoSale);
+    else await createDemoSale(client);
   }
 }
 

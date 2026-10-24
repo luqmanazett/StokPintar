@@ -18,6 +18,8 @@ Compose menjalankan PostgreSQL, menerapkan migrasi Prisma, lalu memulai API dan 
 
 Tombol login cepat empat role hanya ditanam ke build web jika `DEMO_MODE=true`. Untuk mengaktifkannya pada Docker lokal, ubah nilai tersebut di `.env`, lalu bangun ulang web dengan `docker compose build --no-cache web` dan jalankan `docker compose up -d`. Biarkan `DEMO_MODE=false` untuk build non-demo.
 
+Reset demo otomatis hanya diizinkan pada database khusus bernama `stokpintar_demo`, bukan database aplikasi biasa. Untuk setup demo Docker yang baru, ubah `POSTGRES_DB` menjadi `stokpintar_demo` dan sesuaikan nama database pada `DATABASE_URL` serta set `DEMO_MODE=true` sebelum `docker compose up --build -d`; jalankan seed awal dengan konfirmasi `docker compose exec -e NODE_ENV=development -e DEMO_MODE=true -e SEED_DEMO_CONFIRM=YES api npm run db:seed`. Backend kemudian menjalankan reset setiap pukul 03.00 WIB menggunakan timer Node.js dan skrip `npm run seed:demo`. Untuk server lokal, atur `DEMO_MODE=true` dan `DATABASE_URL` ke database `stokpintar_demo` pada `api/.env`, lalu mulai API. Jangan aktifkan mode ini pada database toko yang berisi data nyata.
+
 Untuk mengisi data contoh di instalasi lokal:
 
 ```powershell

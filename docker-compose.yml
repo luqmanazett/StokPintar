@@ -2,13 +2,13 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: stokpintar
+      POSTGRES_DB: ${POSTGRES_DB:-stokpintar}
       POSTGRES_USER: stokpintar
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Atur POSTGRES_PASSWORD melalui file .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U stokpintar -d stokpintar"]
+      test: ["CMD-SHELL", "pg_isready -U stokpintar -d ${POSTGRES_DB:-stokpintar}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -30,6 +30,7 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:?Atur DATABASE_URL melalui file .env}
       JWT_SECRET: ${JWT_SECRET:?Atur JWT_SECRET melalui file .env}
+      DEMO_MODE: ${DEMO_MODE:-false}
       PORT: 3000
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
