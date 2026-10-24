@@ -472,6 +472,10 @@ Mode demo memudahkan reviewer mencoba aplikasi memakai akun ADMIN, MANAJER, GUDA
 
 Saat `DEMO_MODE=true`, API menjadwalkan reset setiap hari pukul 03.00 WIB memakai timer bawaan Node.js dan menjalankan `npm run seed:demo`; UI juga menampilkan banner bahwa data demo direset tiap malam. Skrip menghapus data terkait dalam satu transaksi lalu menjalankan seed demo kembali, sehingga akun dan contoh data kembali ke kondisi awal secara konsisten. Demi mencegah kehilangan data nyata, reset hanya diizinkan pada database khusus bernama `stokpintar_demo` dan memerlukan konfirmasi eksplisit, termasuk jika berjalan di server produksi. Penjadwal tidak berjalan saat mode demo mati, dan tidak menambah dependensi baru.
 
+## Showcase 3 — Halaman depan publik
+
+Pengunjung yang belum login akan melihat halaman depan StokPintar di `/`, sedangkan pengguna yang sudah memiliki token tetap langsung melihat dashboard pada alamat yang sama. Halaman depan memperkenalkan manfaat utama melalui empat kartu fitur, pratinjau visual dashboard, dan tombol untuk menuju login demo tanpa menambah endpoint atau mengubah alur autentikasi. Tautan GitHub mengarah ke pencarian repositori StokPintar karena repositori ini belum memiliki remote GitHub yang dikonfigurasi.
+
 ## M10 — Docker, CI, dan dokumentasi akhir
 
 ### 1. Masalah bisnis yang diselesaikan

@@ -27,6 +27,7 @@ import { Toaster } from "@/components/ui/sonner";
 import Cashier from "./pages/Cashier";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
+import Landing from "./pages/Landing";
 import Products from "./pages/Products";
 import Transactions from "./pages/Transactions";
 import Categories from "./pages/Categories";
@@ -91,7 +92,10 @@ function PageTitle() {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    document.title = `${pageTitles[pathname] ?? "Halaman tidak ditemukan"} | StokPintar`;
+    const title = pathname === "/" && !localStorage.getItem("token")
+      ? "Beranda"
+      : pageTitles[pathname] ?? "Halaman tidak ditemukan";
+    document.title = `${title} | StokPintar`;
   }, [pathname]);
 
   return null;
@@ -177,6 +181,10 @@ function Sidebar({
   );
 }
 
+function HomeRoute() {
+  return localStorage.getItem("token") ? <Layout /> : <Landing />;
+}
+
 function RoleRoute({ children, roles }: { children: ReactNode; roles: Role[] }) {
   const user = JSON.parse(localStorage.getItem("user") ?? "null") as User | null;
   return user?.role && roles.includes(user.role) ? children : <Navigate to="/" replace />;
@@ -233,8 +241,10 @@ export default function App() {
       <DemoBanner />
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/" element={<HomeRoute />}>
+          <Route index element={<Dashboard />} />
+        </Route>
         <Route element={<Layout />}>
-          <Route path="/" element={<Dashboard />} />
           <Route path="/products" element={<Products />} />
           <Route path="/cashier" element={<RoleRoute roles={["ADMIN", "KASIR"]}><Cashier /></RoleRoute>} />
           <Route path="/transactions" element={<RoleRoute roles={["ADMIN", "MANAJER", "KASIR"]}><Transactions /></RoleRoute>} />
