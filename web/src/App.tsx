@@ -36,19 +36,19 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider, ThemeToggle } from "@/components/theme-provider";
 import { api } from "./api";
-import Cashier from "./pages/Cashier";
-import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Landing from "./pages/Landing";
-import Products from "./pages/Products";
-import Transactions from "./pages/Transactions";
-import Categories from "./pages/Categories";
-import CashierAccounts from "./pages/CashierAccounts";
-import AuditLogs from "./pages/AuditLogs";
-import Suppliers from "./pages/Suppliers";
-import PurchaseOrders from "./pages/PurchaseOrders";
-import StockOpnames from "./pages/StockOpnames";
-import Finance from "./pages/Finance";
+const Cashier = lazy(() => import("./pages/Cashier"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Products = lazy(() => import("./pages/Products"));
+const Transactions = lazy(() => import("./pages/Transactions"));
+const Categories = lazy(() => import("./pages/Categories"));
+const CashierAccounts = lazy(() => import("./pages/CashierAccounts"));
+const AuditLogs = lazy(() => import("./pages/AuditLogs"));
+const Suppliers = lazy(() => import("./pages/Suppliers"));
+const PurchaseOrders = lazy(() => import("./pages/PurchaseOrders"));
+const StockOpnames = lazy(() => import("./pages/StockOpnames"));
+const Finance = lazy(() => import("./pages/Finance"));
 const Integrity = lazy(() => import("./pages/Integrity"));
 const Analytics = lazy(() => import("./pages/Analytics"));
 import NotFound from "./pages/NotFound";
@@ -500,27 +500,29 @@ export default function App() {
         <NewUserTour />
         <Toaster />
         <DemoBanner />
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/" element={<HomeRoute />}>
-            <Route index element={<Dashboard />} />
-          </Route>
-          <Route element={<Layout />}>
-            <Route path="/products" element={<Products />} />
-            <Route path="/cashier" element={<RoleRoute roles={["ADMIN", "KASIR"]}><Cashier /></RoleRoute>} />
-            <Route path="/transactions" element={<RoleRoute roles={["ADMIN", "MANAJER", "KASIR"]}><Transactions /></RoleRoute>} />
-            <Route path="/categories" element={<RoleRoute roles={["ADMIN"]}><Categories /></RoleRoute>} />
-            <Route path="/cashier-accounts" element={<RoleRoute roles={["ADMIN"]}><CashierAccounts /></RoleRoute>} />
-            <Route path="/audit-logs" element={<RoleRoute roles={["ADMIN"]}><AuditLogs /></RoleRoute>} />
-            <Route path="/suppliers" element={<RoleRoute roles={["ADMIN", "MANAJER"]}><Suppliers /></RoleRoute>} />
-            <Route path="/purchases" element={<RoleRoute roles={["ADMIN", "MANAJER", "GUDANG"]}><PurchaseOrders /></RoleRoute>} />
-            <Route path="/stock-opnames" element={<RoleRoute roles={["ADMIN", "MANAJER", "GUDANG"]}><StockOpnames /></RoleRoute>} />
-            <Route path="/finance" element={<RoleRoute roles={["ADMIN", "MANAJER"]}><Finance /></RoleRoute>} />
-            <Route path="/analytics" element={<RoleRoute roles={["ADMIN", "MANAJER"]}><Suspense fallback={<div className="text-sm text-muted-foreground">Memuat analitik...</div>}><Analytics /></Suspense></RoleRoute>} />
-            <Route path="/integrity" element={<RoleRoute roles={["ADMIN"]}><Suspense fallback={<div className="text-sm text-muted-foreground">Memuat pemeriksaan integritas...</div>}><Integrity /></Suspense></RoleRoute>} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Suspense fallback={<div className="p-4 text-sm text-muted-foreground" role="status">Memuat halaman...</div>}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<HomeRoute />}>
+              <Route index element={<Dashboard />} />
+            </Route>
+            <Route element={<Layout />}>
+              <Route path="/products" element={<Products />} />
+              <Route path="/cashier" element={<RoleRoute roles={["ADMIN", "KASIR"]}><Cashier /></RoleRoute>} />
+              <Route path="/transactions" element={<RoleRoute roles={["ADMIN", "MANAJER", "KASIR"]}><Transactions /></RoleRoute>} />
+              <Route path="/categories" element={<RoleRoute roles={["ADMIN"]}><Categories /></RoleRoute>} />
+              <Route path="/cashier-accounts" element={<RoleRoute roles={["ADMIN"]}><CashierAccounts /></RoleRoute>} />
+              <Route path="/audit-logs" element={<RoleRoute roles={["ADMIN"]}><AuditLogs /></RoleRoute>} />
+              <Route path="/suppliers" element={<RoleRoute roles={["ADMIN", "MANAJER"]}><Suppliers /></RoleRoute>} />
+              <Route path="/purchases" element={<RoleRoute roles={["ADMIN", "MANAJER", "GUDANG"]}><PurchaseOrders /></RoleRoute>} />
+              <Route path="/stock-opnames" element={<RoleRoute roles={["ADMIN", "MANAJER", "GUDANG"]}><StockOpnames /></RoleRoute>} />
+              <Route path="/finance" element={<RoleRoute roles={["ADMIN", "MANAJER"]}><Finance /></RoleRoute>} />
+              <Route path="/analytics" element={<RoleRoute roles={["ADMIN", "MANAJER"]}><Analytics /></RoleRoute>} />
+              <Route path="/integrity" element={<RoleRoute roles={["ADMIN"]}><Integrity /></RoleRoute>} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </ThemeProvider>
   );

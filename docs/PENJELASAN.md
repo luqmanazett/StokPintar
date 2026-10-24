@@ -496,6 +496,17 @@ Pada kunjungan pertama setelah login, aplikasi menampilkan tur singkat empat lan
 
 Perintah `npm run screenshots` dari folder `web/` memakai Playwright untuk membuka aplikasi, masuk sebagai admin demo, lalu menyimpan halaman publik, login, dashboard, dan halaman utama lainnya pada ukuran desktop serta lebar 375 piksel. Skrip menjalankan Vite sementara bila belum ada web server, tetapi API harus hidup dan database demo sudah di-seed. Kredensial dapat dioverride dengan `SCREENSHOT_EMAIL` dan `SCREENSHOT_PASSWORD`; hasil PNG disimpan ke `docs/screenshots/`.
 
+## Showcase 9 — Audit kualitas Lighthouse
+
+Lighthouse dijalankan dengan preset desktop pada build produksi Vite, memakai commit `22f01e6` sebagai baseline agar pengukuran sebelum dan sesudah sebanding. Lazy-loading halaman internal mengurangi entry bundle dari 508,18 kB (144,48 kB gzip) menjadi 391,79 kB (122,68 kB gzip), sedangkan deskripsi halaman dan aturan `robots.txt` yang valid menaikkan skor SEO. Perubahan dan hasil skornya:
+
+| Halaman | Performa | Aksesibilitas | Praktik terbaik | SEO | LCP |
+|---|---:|---:|---:|---:|---:|
+| Login | 96 → 99 | 100 → 100 | 100 → 100 | 82 → 100 | 1,1 dtk → 0,8 dtk |
+| Dashboard | 97 → 97 | 100 → 100 | 100 → 100 | 82 → 100 | 0,9 dtk → 1,0 dtk |
+
+`npm audit` melaporkan nol kerentanan dan `npm run build` berhasil; lint juga berhasil dengan 16 peringatan `react(set-state-in-effect)` yang sudah ada pada halaman lain. Dashboard tetap memiliki peluang optimasi pemuatan yang kecil, tetapi skor performanya tidak berubah; audit lokal memakai Chrome dengan pemeriksaan CORS dinonaktifkan agar dashboard dapat memanggil API pada port preview.
+
 ## M10 — Docker, CI, dan dokumentasi akhir
 
 ### 1. Masalah bisnis yang diselesaikan
