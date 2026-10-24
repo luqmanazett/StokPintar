@@ -9,6 +9,8 @@ datasource db {
 
 enum Role {
   ADMIN
+  MANAJER
+  GUDANG
   KASIR
 }
 
@@ -18,6 +20,22 @@ enum MovementType {
   ADJUSTMENT
   SALE
   VOID
+  PURCHASE
+  OPNAME
+  SALE_RETURN
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  ORDERED
+  PARTIAL
+  RECEIVED
+  CANCELLED
+}
+
+enum StockOpnameStatus {
+  DRAFT
+  FINALIZED
 }
 
 enum PaymentMethod {
@@ -41,17 +59,41 @@ model User {
   createdAt    DateTime        @default(now())
   sales        Sale[]
   movements    StockMovement[]
+  auditLogs    AuditLog[]
+  purchaseOrders PurchaseOrder[] @relation("PurchaseOrderCreator")
+  goodsReceipts  GoodsReceipt[]   @relation("GoodsReceiptCreator")
+  stockOpnames   StockOpname[]    @relation("StockOpnameCreator")
+  saleReturns    SaleReturn[]     @relation("SaleReturnCreator")
+  expenses      Expense[]        @relation("ExpenseCreator")
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  Int?
+  before    Json?
+  after     Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([entity, createdAt])
 }
 
 model Category {
   id       Int       @id @default(autoincrement())
   name     String    @unique
   products Product[]
+  stockOpnames StockOpname[]
 }
 
 model Product {
   id         Int             @id @default(autoincrement())
   sku        String          @unique
+  barcode    String?         @unique
   name       String
   categoryId Int
   category   Category        @relation(fields: [categoryId], references: [id])
@@ -62,6 +104,8 @@ model Product {
   createdAt  DateTime        @default(now())
   movements  StockMovement[]
   saleItems  SaleItem[]
+  purchaseOrderItems PurchaseOrderItem[]
+  stockOpnameItems StockOpnameItem[]
 }
 
 model StockMovement {
@@ -75,9 +119,110 @@ model StockMovement {
   createdBy   User         @relation(fields: [createdById], references: [id])
   saleId      Int?
   sale        Sale?        @relation(fields: [saleId], references: [id])
+  goodsReceiptId Int?
+  goodsReceipt GoodsReceipt? @relation(fields: [goodsReceiptId], references: [id])
+  stockOpnameId Int?
+  stockOpname StockOpname? @relation(fields: [stockOpnameId], references: [id])
+  saleReturnId Int?
+  saleReturn SaleReturn? @relation(fields: [saleReturnId], references: [id])
   createdAt   DateTime     @default(now())
 
   @@index([productId])
+}
+
+model Supplier {
+  id            Int             @id @default(autoincrement())
+  name          String
+  phone         String?
+  address       String?
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  purchaseOrders PurchaseOrder[]
+}
+
+model PurchaseOrder {
+  id          Int                @id @default(autoincrement())
+  orderNumber String             @unique
+  supplierId  Int
+  supplier    Supplier           @relation(fields: [supplierId], references: [id])
+  status      PurchaseOrderStatus @default(DRAFT)
+  notes       String?
+  createdById Int
+  createdBy   User               @relation("PurchaseOrderCreator", fields: [createdById], references: [id])
+  createdAt   DateTime           @default(now())
+  orderedAt   DateTime?
+  items       PurchaseOrderItem[]
+  receipts    GoodsReceipt[]
+
+  @@index([status, createdAt])
+}
+
+model PurchaseOrderItem {
+  id              Int           @id @default(autoincrement())
+  purchaseOrderId Int
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  productId       Int
+  product         Product       @relation(fields: [productId], references: [id])
+  qtyOrdered      Int
+  qtyReceived     Int           @default(0)
+  unitCost        Int
+  receiptItems    GoodsReceiptItem[]
+
+  @@unique([purchaseOrderId, productId])
+}
+
+model GoodsReceipt {
+  id              Int               @id @default(autoincrement())
+  purchaseOrderId Int
+  purchaseOrder   PurchaseOrder     @relation(fields: [purchaseOrderId], references: [id])
+  createdById     Int
+  createdBy       User              @relation("GoodsReceiptCreator", fields: [createdById], references: [id])
+  note            String?
+  createdAt       DateTime          @default(now())
+  items           GoodsReceiptItem[]
+  movements       StockMovement[]
+}
+
+model GoodsReceiptItem {
+  id                  Int              @id @default(autoincrement())
+  goodsReceiptId      Int
+  goodsReceipt        GoodsReceipt     @relation(fields: [goodsReceiptId], references: [id], onDelete: Cascade)
+  purchaseOrderItemId Int
+  purchaseOrderItem   PurchaseOrderItem @relation(fields: [purchaseOrderItemId], references: [id])
+  quantity            Int
+
+  @@unique([goodsReceiptId, purchaseOrderItemId])
+}
+
+model StockOpname {
+  id           Int               @id @default(autoincrement())
+  opnameNumber String            @unique
+  status       StockOpnameStatus @default(DRAFT)
+  notes        String?
+  categoryId   Int?
+  category     Category?         @relation(fields: [categoryId], references: [id])
+  createdById  Int
+  createdBy    User              @relation("StockOpnameCreator", fields: [createdById], references: [id])
+  createdAt    DateTime          @default(now())
+  finalizedAt  DateTime?
+  items        StockOpnameItem[]
+  movements    StockMovement[]
+
+  @@index([status, createdAt])
+}
+
+model StockOpnameItem {
+  id             Int         @id @default(autoincrement())
+  stockOpnameId  Int
+  stockOpname    StockOpname @relation(fields: [stockOpnameId], references: [id], onDelete: Cascade)
+  productId      Int
+  product        Product     @relation(fields: [productId], references: [id])
+  systemQty      Int
+  countedQty     Int?
+  difference     Int?
+  unitCostAtOpen Int
+
+  @@unique([stockOpnameId, productId])
 }
 
 model Sale {
@@ -92,6 +237,7 @@ model Sale {
   createdAt     DateTime      @default(now())
   items         SaleItem[]
   movements     StockMovement[]
+  returns       SaleReturn[]
 
   @@index([createdAt])
 }
@@ -105,4 +251,46 @@ model SaleItem {
   quantity  Int
   unitPrice Int
   unitCost  Int
+  returns   SaleReturnItem[]
+}
+
+model SaleReturn {
+  id          Int              @id @default(autoincrement())
+  saleId      Int
+  sale        Sale             @relation(fields: [saleId], references: [id])
+  reason      String
+  totalRefund Int
+  createdById Int
+  createdBy   User             @relation("SaleReturnCreator", fields: [createdById], references: [id])
+  createdAt   DateTime         @default(now())
+  items       SaleReturnItem[]
+  movements   StockMovement[]
+
+  @@index([saleId, createdAt])
+}
+
+model SaleReturnItem {
+  id          Int       @id @default(autoincrement())
+  saleReturnId Int
+  saleReturn  SaleReturn @relation(fields: [saleReturnId], references: [id], onDelete: Cascade)
+  saleItemId  Int
+  saleItem    SaleItem   @relation(fields: [saleItemId], references: [id])
+  quantity    Int
+  refundAmount Int
+
+  @@unique([saleReturnId, saleItemId])
+}
+
+model Expense {
+  id          Int      @id @default(autoincrement())
+  category    String
+  description String?
+  amount      Int
+  incurredAt  DateTime
+  createdById Int
+  createdBy   User     @relation("ExpenseCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([incurredAt])
+  @@index([category, incurredAt])
 }

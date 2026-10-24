@@ -3,11 +3,13 @@ import { z } from "zod";
 import { prisma } from "../db";
 import { AppError } from "../middlewares/error";
 import { requireAuth, requireRole } from "../middlewares/auth";
+import { audit } from "../services/audit";
 
 const router = Router();
 
 const productSchema = z.object({
   sku: z.string().trim().min(1),
+  barcode: z.string().trim().min(1).max(128).nullable().optional(),
   name: z.string().trim().min(1),
   categoryId: z.number().int(),
   costPrice: z.number().int().min(0),
@@ -18,34 +20,92 @@ const productSchema = z.object({
 router.get("/", requireAuth, async (req, res) => {
   const search = `%${String(req.query.search ?? "")}%`;
   const rows = await prisma.$queryRaw`
-    SELECT p.id, p.sku, p.name, p."categoryId", c.name AS category,
+    SELECT p.id, p.sku, p.barcode, p.name, p."categoryId", c.name AS category,
     p."costPrice", p."sellPrice", p."minStock",
     COALESCE(SUM(m.change), 0)::int AS stock
     FROM "Product" p
     JOIN "Category" c ON c.id = p."categoryId"
     LEFT JOIN "StockMovement" m ON m."productId" = p.id
     WHERE p."isActive" = true
-    AND (p.name ILIKE ${search} OR p.sku ILIKE ${search})
+    AND (p.name ILIKE ${search} OR p.sku ILIKE ${search} OR p.barcode ILIKE ${search})
     GROUP BY p.id, c.name
     ORDER BY p.name`;
   res.json(rows);
 });
 
-router.post("/", requireAuth, requireRole("ADMIN"), async (req, res) => {
+router.post("/", requireAuth, requireRole("ADMIN", "GUDANG"), async (req, res) => {
   const data = productSchema.parse(req.body);
   const exists = await prisma.product.findUnique({ where: { sku: data.sku } });
   if (exists) throw new AppError(409, "SKU sudah dipakai");
-  res.status(201).json(await prisma.product.create({ data }));
+  if (data.barcode) {
+    const barcodeExists = await prisma.product.findUnique({ where: { barcode: data.barcode } });
+    if (barcodeExists) throw new AppError(409, "Barcode sudah dipakai");
+  }
+  const product = await prisma.$transaction(async (tx) => {
+    const created = await tx.product.create({ data });
+    await audit(tx, {
+      userId: req.user!.id,
+      action: "PRODUCT_CREATE",
+      entity: "Product",
+      entityId: created.id,
+      after: {
+        sku: created.sku,
+        barcode: created.barcode,
+        name: created.name,
+        categoryId: created.categoryId,
+        costPrice: created.costPrice,
+        sellPrice: created.sellPrice,
+      },
+      ip: req.ip,
+    });
+    return created;
+  });
+  res.status(201).json(product);
 });
 
-router.put("/:id", requireAuth, requireRole("ADMIN"), async (req, res) => {
+router.put("/:id", requireAuth, requireRole("ADMIN", "GUDANG"), async (req, res) => {
+  const id = Number(req.params.id);
   const data = productSchema.partial().parse(req.body);
-  res.json(await prisma.product.update({ where: { id: Number(req.params.id) }, data }));
+  const before = await prisma.product.findUnique({ where: { id } });
+  if (!before) throw new AppError(404, "Produk tidak ditemukan");
+  if (data.barcode) {
+    const barcodeExists = await prisma.product.findUnique({ where: { barcode: data.barcode } });
+    if (barcodeExists && barcodeExists.id !== id) throw new AppError(409, "Barcode sudah dipakai");
+  }
+
+  const product = await prisma.$transaction(async (tx) => {
+    const updated = await tx.product.update({ where: { id }, data });
+    await audit(tx, {
+      userId: req.user!.id,
+      action: "PRODUCT_UPDATE",
+      entity: "Product",
+      entityId: id,
+      before: { sku: before.sku, barcode: before.barcode, name: before.name, costPrice: before.costPrice, sellPrice: before.sellPrice },
+      after: { sku: updated.sku, barcode: updated.barcode, name: updated.name, costPrice: updated.costPrice, sellPrice: updated.sellPrice },
+      ip: req.ip,
+    });
+    return updated;
+  });
+  res.json(product);
 });
 
 // "hapus" = arsipkan, supaya riwayat transaksi tetap utuh
-router.delete("/:id", requireAuth, requireRole("ADMIN"), async (req, res) => {
-  await prisma.product.update({ where: { id: Number(req.params.id) }, data: { isActive: false } });
+router.delete("/:id", requireAuth, requireRole("ADMIN", "GUDANG"), async (req, res) => {
+  const id = Number(req.params.id);
+  const before = await prisma.product.findUnique({ where: { id } });
+  if (!before) throw new AppError(404, "Produk tidak ditemukan");
+  await prisma.$transaction(async (tx) => {
+    const archived = await tx.product.update({ where: { id }, data: { isActive: false } });
+    await audit(tx, {
+      userId: req.user!.id,
+      action: "PRODUCT_ARCHIVE",
+      entity: "Product",
+      entityId: id,
+      before: { isActive: before.isActive },
+      after: { isActive: archived.isActive },
+      ip: req.ip,
+    });
+  });
   res.json({ message: "Produk diarsipkan" });
 });
 

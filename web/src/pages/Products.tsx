@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Archive, History, PackagePlus, Pencil, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { api, rupiah } from "../api";
@@ -22,6 +23,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 type Product = {
   id: number;
   sku: string;
+  barcode: string | null;
   name: string;
   categoryId: number;
   category: string;
@@ -33,6 +35,7 @@ type Product = {
 type Category = { id: number; name: string };
 type ProductForm = {
   sku: string;
+  barcode: string;
   name: string;
   categoryId: number;
   costPrice: number;
@@ -52,6 +55,7 @@ type User = { role?: string } | null;
 
 const emptyForm: ProductForm = {
   sku: "",
+  barcode: "",
   name: "",
   categoryId: 0,
   costPrice: 0,
@@ -70,11 +74,15 @@ const movementLabels: Record<string, string> = {
   ADJUSTMENT: "Penyesuaian",
   SALE: "Penjualan",
   VOID: "Pembatalan",
+  PURCHASE: "Pembelian",
+  OPNAME: "Stok opname",
+  SALE_RETURN: "Retur penjualan",
 };
 
 function validateProduct(form: ProductForm): FormErrors {
   const errors: FormErrors = {};
   if (!form.sku.trim()) errors.sku = "SKU wajib diisi.";
+  if (form.barcode.trim().length > 128) errors.barcode = "Barcode maksimal 128 karakter.";
   if (!form.name.trim()) errors.name = "Nama produk wajib diisi.";
   if (!Number.isInteger(form.categoryId) || form.categoryId <= 0) errors.categoryId = "Pilih kategori.";
   if (!Number.isInteger(form.costPrice) || form.costPrice < 0) errors.costPrice = "Harga beli harus berupa bilangan bulat minimal 0.";
@@ -90,11 +98,12 @@ function stockStatus(product: Product) {
 }
 
 export default function Products() {
+  const [searchParams] = useSearchParams();
   const user = JSON.parse(localStorage.getItem("user") ?? "null") as User;
-  const isAdmin = user?.role === "ADMIN";
+  const canManageProducts = user?.role === "ADMIN" || user?.role === "GUDANG";
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [productError, setProductError] = useState("");
@@ -139,6 +148,10 @@ export default function Products() {
     void loadProducts();
   }, [loadProducts]);
 
+  useEffect(() => {
+    setSearch(searchParams.get("search") ?? "");
+  }, [searchParams]);
+
   const loadCategories = useCallback(async () => {
     try {
       setCategories(await api<Category[]>("/categories"));
@@ -166,6 +179,7 @@ export default function Products() {
     setEditingProduct(product);
     setForm({
       sku: product.sku,
+      barcode: product.barcode ?? "",
       name: product.name,
       categoryId: product.categoryId,
       costPrice: product.costPrice,
@@ -185,7 +199,12 @@ export default function Products() {
     if (Object.keys(errors).length > 0) return;
 
     setIsSavingProduct(true);
-    const payload = { ...form, sku: form.sku.trim(), name: form.name.trim() };
+    const payload = {
+      ...form,
+      sku: form.sku.trim(),
+      barcode: form.barcode.trim() || null,
+      name: form.name.trim(),
+    };
     try {
       if (editingProduct) {
         await api(`/products/${editingProduct.id}`, { method: "PUT", body: JSON.stringify(payload) });
@@ -307,7 +326,7 @@ export default function Products() {
           <Input
             aria-label="Cari produk"
             className="pl-9"
-            placeholder="Cari nama atau SKU"
+            placeholder="Cari nama, SKU, atau barcode"
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);
@@ -333,7 +352,7 @@ export default function Products() {
               ))}
             </select>
           </div>
-          {isAdmin && (
+          {canManageProducts && (
             <Button onClick={openCreateDialog} disabled={categories.length === 0}>
               <Plus className="size-4" aria-hidden="true" />
               Tambah produk
@@ -347,33 +366,34 @@ export default function Products() {
           <TableHeader>
             <TableRow>
               <TableHead>SKU</TableHead>
+              <TableHead>Barcode</TableHead>
               <TableHead>Nama produk</TableHead>
               <TableHead>Kategori</TableHead>
               <TableHead>Harga jual</TableHead>
               <TableHead>Stok</TableHead>
-              {isAdmin && <TableHead className="text-right">Aksi</TableHead>}
-              {!isAdmin && <TableHead className="text-right">Riwayat</TableHead>}
+              {canManageProducts && <TableHead className="text-right">Aksi</TableHead>}
+              {!canManageProducts && <TableHead className="text-right">Riwayat</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               Array.from({ length: 5 }, (_, row) => (
                 <TableRow key={row}>
-                  {Array.from({ length: isAdmin ? 6 : 6 }, (_, cell) => (
+                  {Array.from({ length: 7 }, (_, cell) => (
                     <TableCell key={cell}><Skeleton className="h-5 w-24" /></TableCell>
                   ))}
                 </TableRow>
               ))
             ) : visibleProducts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-36 text-center">
+                <TableCell colSpan={7} className="h-36 text-center">
                   <p className="font-medium text-slate-800">
                     {productError ? "Produk belum dapat ditampilkan." : products.length === 0 ? "Belum ada produk" : "Produk tidak ditemukan"}
                   </p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {products.length === 0 ? "Tambahkan produk untuk mulai mengelola stok toko." : "Ubah kata kunci atau filter kategori."}
                   </p>
-                  {isAdmin && products.length === 0 && (
+                  {canManageProducts && products.length === 0 && (
                     <Button variant="outline" size="sm" className="mt-3" onClick={openCreateDialog} disabled={categories.length === 0}>
                       <Plus className="size-4" aria-hidden="true" />
                       Tambah produk
@@ -387,6 +407,7 @@ export default function Products() {
                 return (
                   <TableRow key={product.id}>
                     <TableCell className="whitespace-nowrap font-medium text-slate-600">{product.sku}</TableCell>
+                    <TableCell className="whitespace-nowrap text-slate-600">{product.barcode ?? "—"}</TableCell>
                     <TableCell className="min-w-40 font-medium text-slate-900">{product.name}</TableCell>
                     <TableCell>{product.category}</TableCell>
                     <TableCell className="whitespace-nowrap">{rupiah(product.sellPrice)}</TableCell>
@@ -399,7 +420,7 @@ export default function Products() {
                           <History className="size-4" aria-hidden="true" />
                           <span className="hidden lg:inline">Riwayat</span>
                         </Button>
-                        {isAdmin && (
+                        {canManageProducts && (
                           <>
                             <Button variant="ghost" size="sm" onClick={() => openStockDialog(product)} aria-label={`Tambah stok ${product.name}`}>
                               <PackagePlus className="size-4" aria-hidden="true" />
@@ -456,6 +477,11 @@ export default function Products() {
                 <Label htmlFor="product-sku">SKU</Label>
                 <Input id="product-sku" value={form.sku} onChange={(event) => updateForm("sku", event.target.value)} aria-invalid={Boolean(formErrors.sku)} />
                 {formErrors.sku && <p className="text-xs text-red-600">{formErrors.sku}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="product-barcode">Barcode (opsional)</Label>
+                <Input id="product-barcode" value={form.barcode} onChange={(event) => updateForm("barcode", event.target.value)} aria-invalid={Boolean(formErrors.barcode)} />
+                {formErrors.barcode && <p className="text-xs text-red-600">{formErrors.barcode}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="product-name">Nama produk</Label>

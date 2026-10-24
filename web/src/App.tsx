@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { BrowserRouter, NavLink, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import {
   ClipboardList,
@@ -9,42 +9,86 @@ import {
   Package,
   ShoppingCart,
   Store,
+  ScrollText,
+  Truck,
+  PackageCheck,
+  ClipboardCheck,
   UserPlus,
+  ChartNoAxesCombined,
+  ShieldCheck,
+  Activity,
+  Search,
+  LoaderCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Toaster } from "@/components/ui/sonner";
-import Cashier from "./pages/Cashier";
-import Dashboard from "./pages/Dashboard";
+import { ThemeProvider, ThemeToggle } from "@/components/theme-provider";
+import { api } from "./api";
 import Login from "./pages/Login";
-import Products from "./pages/Products";
-import Transactions from "./pages/Transactions";
-import Categories from "./pages/Categories";
-import CashierAccounts from "./pages/CashierAccounts";
+import Landing from "./pages/Landing";
+const Cashier = lazy(() => import("./pages/Cashier"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Products = lazy(() => import("./pages/Products"));
+const Transactions = lazy(() => import("./pages/Transactions"));
+const Categories = lazy(() => import("./pages/Categories"));
+const CashierAccounts = lazy(() => import("./pages/CashierAccounts"));
+const AuditLogs = lazy(() => import("./pages/AuditLogs"));
+const Suppliers = lazy(() => import("./pages/Suppliers"));
+const PurchaseOrders = lazy(() => import("./pages/PurchaseOrders"));
+const StockOpnames = lazy(() => import("./pages/StockOpnames"));
+const Finance = lazy(() => import("./pages/Finance"));
+const Integrity = lazy(() => import("./pages/Integrity"));
+const Analytics = lazy(() => import("./pages/Analytics"));
 import NotFound from "./pages/NotFound";
+
+type Role = "ADMIN" | "MANAJER" | "GUDANG" | "KASIR";
 
 type User = {
   name?: string;
-  role?: "ADMIN" | "KASIR";
+  role?: Role;
 };
 
 type NavigationItem = {
   label: string;
   href: string;
   icon: LucideIcon;
-  adminOnly?: boolean;
+  roles?: Role[];
+};
+
+type SearchProduct = {
+  id: number;
+  sku: string;
+  name: string;
+  category: string;
+  stock: number;
 };
 
 const navigation: NavigationItem[] = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
   { label: "Produk", href: "/products", icon: Package },
-  { label: "Kasir", href: "/cashier", icon: ShoppingCart },
-  { label: "Transaksi", href: "/transactions", icon: ClipboardList },
-  { label: "Kategori", href: "/categories", icon: FolderTree, adminOnly: true },
-  { label: "Akun kasir", href: "/cashier-accounts", icon: UserPlus, adminOnly: true },
+  { label: "Kasir", href: "/cashier", icon: ShoppingCart, roles: ["ADMIN", "KASIR"] },
+  { label: "Transaksi", href: "/transactions", icon: ClipboardList, roles: ["ADMIN", "MANAJER", "KASIR"] },
+  { label: "Kategori", href: "/categories", icon: FolderTree, roles: ["ADMIN"] },
+  { label: "Akun", href: "/cashier-accounts", icon: UserPlus, roles: ["ADMIN"] },
+  { label: "Log audit", href: "/audit-logs", icon: ScrollText, roles: ["ADMIN"] },
+  { label: "Pemasok", href: "/suppliers", icon: Truck, roles: ["ADMIN", "MANAJER"] },
+  { label: "Pembelian", href: "/purchases", icon: PackageCheck, roles: ["ADMIN", "MANAJER", "GUDANG"] },
+  { label: "Stok opname", href: "/stock-opnames", icon: ClipboardCheck, roles: ["ADMIN", "MANAJER", "GUDANG"] },
+  { label: "Keuangan", href: "/finance", icon: ChartNoAxesCombined, roles: ["ADMIN", "MANAJER"] },
+  { label: "Analitik", href: "/analytics", icon: Activity, roles: ["ADMIN", "MANAJER"] },
+  { label: "Integritas data", href: "/integrity", icon: ShieldCheck, roles: ["ADMIN"] },
 ];
 
 const pageTitles: Record<string, string> = {
@@ -54,17 +98,114 @@ const pageTitles: Record<string, string> = {
   "/cashier": "Kasir",
   "/transactions": "Riwayat transaksi",
   "/categories": "Kategori",
-  "/cashier-accounts": "Akun kasir",
+  "/cashier-accounts": "Akun pengguna",
+  "/audit-logs": "Log audit",
+  "/suppliers": "Pemasok",
+  "/purchases": "Pembelian",
+  "/stock-opnames": "Stok opname",
+  "/finance": "Keuangan",
+  "/analytics": "Analitik",
+  "/integrity": "Integritas data",
 };
 
 function PageTitle() {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    document.title = `${pageTitles[pathname] ?? "Halaman tidak ditemukan"} | StokPintar`;
+    const title = pathname === "/" && !localStorage.getItem("token")
+      ? "Beranda"
+      : pageTitles[pathname] ?? "Halaman tidak ditemukan";
+    document.title = `${title} | StokPintar`;
   }, [pathname]);
 
   return null;
+}
+
+function DemoBanner() {
+  if (!import.meta.env.VITE_DEMO_MODE) return null;
+  return (
+    <div className="bg-amber-50 px-4 py-2 text-center text-xs font-medium text-amber-900" role="status">
+      Mode demo: data direset tiap malam pukul 03.00 WIB
+    </div>
+  );
+}
+
+function NewUserTour() {
+  const { pathname } = useLocation();
+  const [step, setStep] = useState(0);
+  const [dismissed, setDismissed] = useState(false);
+  const steps = [
+    {
+      title: "Mulai dari dashboard",
+      description: "Lihat ringkasan aktivitas, tren penjualan, produk terlaris, dan stok yang perlu diperhatikan.",
+    },
+    {
+      title: "Kenali menu sesuai peran",
+      description: "Menu navigasi menyesuaikan akses akunmu, jadi setiap anggota tim melihat fitur yang relevan.",
+    },
+    {
+      title: "Temukan data dengan cepat",
+      description: "Cari produk dari halaman Produk atau tekan Ctrl+K untuk membuka pencarian cepat.",
+    },
+    {
+      title: "Coba alur kerja yang tersedia",
+      description: "Jelajahi fitur sesuai tugasmu. Kamu bisa menyelesaikan langkah ini atau melewati tur kapan saja.",
+    },
+  ];
+  const currentStep = steps[step];
+  const open =
+    Boolean(localStorage.getItem("token"))
+    && pathname !== "/login"
+    && !localStorage.getItem("stokpintar-tour-completed")
+    && !dismissed;
+
+  function finishTour() {
+    localStorage.setItem("stokpintar-tour-completed", "true");
+    setDismissed(true);
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) finishTour();
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{currentStep.title}</DialogTitle>
+          <DialogDescription>{currentStep.description}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          <div className="flex gap-1.5" aria-label={`Langkah ${step + 1} dari ${steps.length}`}>
+            {steps.map((tourStep, index) => (
+              <span
+                key={tourStep.title}
+                className={`h-1.5 flex-1 rounded-full ${index <= step ? "bg-primary" : "bg-slate-200"}`}
+              />
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">Langkah {step + 1} dari {steps.length}</p>
+        </div>
+        <DialogFooter className="sm:flex-row sm:justify-between">
+          <Button type="button" variant="ghost" onClick={finishTour}>Lewati tur</Button>
+          <div className="flex justify-end gap-2">
+            {step > 0 && (
+              <Button type="button" variant="outline" onClick={() => setStep((current) => current - 1)}>
+                Kembali
+              </Button>
+            )}
+            <Button
+              type="button"
+              onClick={() => step === steps.length - 1 ? finishTour() : setStep((current) => current + 1)}
+            >
+              {step === steps.length - 1 ? "Selesai" : "Selanjutnya"}
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function Sidebar({
@@ -76,8 +217,13 @@ function Sidebar({
   onNavigate?: () => void;
   onLogout: () => void;
 }) {
-  // Menu khusus admin tidak ditampilkan untuk akun kasir.
-  const items = navigation.filter((item) => !item.adminOnly || user?.role === "ADMIN");
+  const items = navigation.filter((item) => !item.roles || (user?.role && item.roles.includes(user.role)));
+  const roleLabels: Record<Role, string> = {
+    ADMIN: "Administrator",
+    MANAJER: "Manajer",
+    GUDANG: "Gudang",
+    KASIR: "Kasir",
+  };
 
   return (
     <div className="flex h-full flex-col bg-white">
@@ -121,8 +267,12 @@ function Sidebar({
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-slate-800">{user?.name || "Pengguna"}</p>
-            <p className="text-xs text-muted-foreground">{user?.role === "ADMIN" ? "Administrator" : "Kasir"}</p>
+            <p className="text-xs text-muted-foreground">{user?.role ? roleLabels[user.role] : "Pengguna"}</p>
           </div>
+        </div>
+        <div className="flex items-center justify-between px-3 py-1">
+          <span className="text-xs text-muted-foreground">Tampilan</span>
+          <ThemeToggle />
         </div>
         <Button variant="ghost" className="mt-1 w-full justify-start text-slate-600 hover:text-red-600" onClick={onLogout}>
           <LogOut className="size-4" aria-hidden="true" />
@@ -133,9 +283,166 @@ function Sidebar({
   );
 }
 
-function AdminRoute({ children }: { children: ReactNode }) {
+function HomeRoute() {
+  return localStorage.getItem("token") ? <Layout /> : <Landing />;
+}
+
+function RoleRoute({ children, roles }: { children: ReactNode; roles: Role[] }) {
   const user = JSON.parse(localStorage.getItem("user") ?? "null") as User | null;
-  return user?.role === "ADMIN" ? children : <Navigate to="/" replace />;
+  return user?.role && roles.includes(user.role) ? children : <Navigate to="/" replace />;
+}
+
+function CommandPalette() {
+  const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem("user") ?? "null") as User | null;
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [products, setProducts] = useState<SearchProduct[]>([]);
+  const [searchError, setSearchError] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const searchTerm = query.trim();
+  const matchingPages = navigation
+    .filter((item) => !item.roles || (user?.role && item.roles.includes(user.role)))
+    .filter((item) => !searchTerm || item.label.toLocaleLowerCase("id-ID").includes(searchTerm.toLocaleLowerCase("id-ID")));
+
+  useEffect(() => {
+    function handleShortcut(event: KeyboardEvent) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k" && localStorage.getItem("token")) {
+        event.preventDefault();
+        setQuery("");
+        setOpen(true);
+      }
+    }
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, []);
+
+  useEffect(() => {
+    if (!open || searchTerm.length < 2) return;
+
+    let active = true;
+    const timer = window.setTimeout(() => {
+      void api<SearchProduct[]>(`/products?search=${encodeURIComponent(searchTerm)}`)
+        .then((results) => {
+          if (active) {
+            setProducts(results);
+            setSearchError("");
+          }
+        })
+        .catch((error: unknown) => {
+          if (active) setSearchError(error instanceof Error ? error.message : "Produk tidak dapat dicari.");
+        })
+        .finally(() => {
+          if (active) setIsSearching(false);
+        });
+    }, 250);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [open, searchTerm]);
+
+  function changeQuery(value: string) {
+    setQuery(value);
+    setProducts([]);
+    setSearchError("");
+    setIsSearching(value.trim().length >= 2);
+  }
+
+  function openPage(path: string) {
+    setOpen(false);
+    navigate(path);
+  }
+
+  if (!localStorage.getItem("token")) return null;
+
+  const visiblePages = searchTerm ? matchingPages : matchingPages.slice(0, 4);
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) changeQuery("");
+      }}
+    >
+      <DialogContent className="top-[20%] max-h-[75vh] -translate-y-0 overflow-y-auto p-0 sm:top-[15%]">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Pencarian cepat</DialogTitle>
+          <DialogDescription>Cari halaman atau produk StokPintar.</DialogDescription>
+        </DialogHeader>
+        <div className="flex items-center gap-3 border-b px-4">
+          {isSearching ? (
+            <LoaderCircle className="size-4 animate-spin text-muted-foreground" aria-hidden="true" />
+          ) : (
+            <Search className="size-4 text-muted-foreground" aria-hidden="true" />
+          )}
+          <Input
+            autoFocus
+            aria-label="Cari halaman atau produk"
+            className="border-0 px-0 shadow-none focus-visible:ring-0"
+            placeholder="Cari halaman atau produk..."
+            value={query}
+            onChange={(event) => changeQuery(event.target.value)}
+          />
+          <kbd className="hidden rounded border bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-500 sm:inline">ESC</kbd>
+        </div>
+        <div className="space-y-4 p-3">
+          {visiblePages.length > 0 && (
+            <section aria-label="Halaman">
+              <p className="px-2 pb-1 text-xs font-medium text-slate-500">Halaman</p>
+              <div className="space-y-1">
+                {visiblePages.map(({ label, href, icon: Icon }) => (
+                  <button
+                    key={href}
+                    type="button"
+                    onClick={() => openPage(href)}
+                    className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700"
+                  >
+                    <Icon className="size-4" aria-hidden="true" />
+                    <span>{label}</span>
+                    <span className="ml-auto text-xs text-slate-400">{href}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+          {searchTerm.length >= 2 && (
+            <section aria-label="Produk">
+              <p className="px-2 pb-1 text-xs font-medium text-slate-500">Produk</p>
+              {searchError ? (
+                <p className="px-2 py-3 text-sm text-red-600" role="alert">{searchError}</p>
+              ) : products.length > 0 ? (
+                <div className="space-y-1">
+                  {products.map((product) => (
+                    <button
+                      key={product.id}
+                      type="button"
+                      onClick={() => openPage(`/products?search=${encodeURIComponent(product.sku)}`)}
+                      className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left hover:bg-indigo-50"
+                    >
+                      <Package className="size-4 shrink-0 text-slate-400" aria-hidden="true" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium text-slate-800">{product.name}</span>
+                        <span className="block truncate text-xs text-slate-500">{product.sku} · {product.category}</span>
+                      </span>
+                      <span className="shrink-0 text-xs text-slate-500">Stok {product.stock}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : !isSearching && !searchError ? (
+                <p className="px-2 py-3 text-sm text-slate-500">Tidak ada produk yang cocok.</p>
+              ) : null}
+            </section>
+          )}
+          {!searchTerm && (
+            <p className="px-2 text-xs text-slate-400">Ketik untuk mencari halaman atau produk. Tekan Ctrl+K untuk membuka kapan saja.</p>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function Layout() {
@@ -171,6 +478,9 @@ function Layout() {
             </SheetContent>
           </Sheet>
           <span className="font-semibold tracking-tight text-slate-900">StokPintar</span>
+          <div className="ml-auto">
+            <ThemeToggle />
+          </div>
         </header>
 
         <main className="mx-auto w-full max-w-7xl p-4 sm:p-6 lg:p-8">
@@ -183,21 +493,37 @@ function Layout() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <PageTitle />
-      <Toaster />
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route element={<Layout />}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/cashier" element={<Cashier />} />
-          <Route path="/transactions" element={<Transactions />} />
-          <Route path="/categories" element={<AdminRoute><Categories /></AdminRoute>} />
-          <Route path="/cashier-accounts" element={<AdminRoute><CashierAccounts /></AdminRoute>} />
-        </Route>
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <PageTitle />
+        <CommandPalette />
+        <NewUserTour />
+        <Toaster />
+        <DemoBanner />
+        <Suspense fallback={<div className="p-4 text-sm text-muted-foreground" role="status">Memuat halaman...</div>}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<HomeRoute />}>
+              <Route index element={<Dashboard />} />
+            </Route>
+            <Route element={<Layout />}>
+              <Route path="/products" element={<Products />} />
+              <Route path="/cashier" element={<RoleRoute roles={["ADMIN", "KASIR"]}><Cashier /></RoleRoute>} />
+              <Route path="/transactions" element={<RoleRoute roles={["ADMIN", "MANAJER", "KASIR"]}><Transactions /></RoleRoute>} />
+              <Route path="/categories" element={<RoleRoute roles={["ADMIN"]}><Categories /></RoleRoute>} />
+              <Route path="/cashier-accounts" element={<RoleRoute roles={["ADMIN"]}><CashierAccounts /></RoleRoute>} />
+              <Route path="/audit-logs" element={<RoleRoute roles={["ADMIN"]}><AuditLogs /></RoleRoute>} />
+              <Route path="/suppliers" element={<RoleRoute roles={["ADMIN", "MANAJER"]}><Suppliers /></RoleRoute>} />
+              <Route path="/purchases" element={<RoleRoute roles={["ADMIN", "MANAJER", "GUDANG"]}><PurchaseOrders /></RoleRoute>} />
+              <Route path="/stock-opnames" element={<RoleRoute roles={["ADMIN", "MANAJER", "GUDANG"]}><StockOpnames /></RoleRoute>} />
+              <Route path="/finance" element={<RoleRoute roles={["ADMIN", "MANAJER"]}><Finance /></RoleRoute>} />
+              <Route path="/analytics" element={<RoleRoute roles={["ADMIN", "MANAJER"]}><Analytics /></RoleRoute>} />
+              <Route path="/integrity" element={<RoleRoute roles={["ADMIN"]}><Integrity /></RoleRoute>} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
