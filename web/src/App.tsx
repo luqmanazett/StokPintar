@@ -26,6 +26,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -126,6 +127,84 @@ function DemoBanner() {
     <div className="bg-amber-50 px-4 py-2 text-center text-xs font-medium text-amber-900" role="status">
       Mode demo: data direset tiap malam pukul 03.00 WIB
     </div>
+  );
+}
+
+function NewUserTour() {
+  const { pathname } = useLocation();
+  const [step, setStep] = useState(0);
+  const [dismissed, setDismissed] = useState(false);
+  const steps = [
+    {
+      title: "Mulai dari dashboard",
+      description: "Lihat ringkasan aktivitas, tren penjualan, produk terlaris, dan stok yang perlu diperhatikan.",
+    },
+    {
+      title: "Kenali menu sesuai peran",
+      description: "Menu navigasi menyesuaikan akses akunmu, jadi setiap anggota tim melihat fitur yang relevan.",
+    },
+    {
+      title: "Temukan data dengan cepat",
+      description: "Cari produk dari halaman Produk atau tekan Ctrl+K untuk membuka pencarian cepat.",
+    },
+    {
+      title: "Coba alur kerja yang tersedia",
+      description: "Jelajahi fitur sesuai tugasmu. Kamu bisa menyelesaikan langkah ini atau melewati tur kapan saja.",
+    },
+  ];
+  const currentStep = steps[step];
+  const open =
+    Boolean(localStorage.getItem("token"))
+    && pathname !== "/login"
+    && !localStorage.getItem("stokpintar-tour-completed")
+    && !dismissed;
+
+  function finishTour() {
+    localStorage.setItem("stokpintar-tour-completed", "true");
+    setDismissed(true);
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) finishTour();
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{currentStep.title}</DialogTitle>
+          <DialogDescription>{currentStep.description}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          <div className="flex gap-1.5" aria-label={`Langkah ${step + 1} dari ${steps.length}`}>
+            {steps.map((tourStep, index) => (
+              <span
+                key={tourStep.title}
+                className={`h-1.5 flex-1 rounded-full ${index <= step ? "bg-primary" : "bg-slate-200"}`}
+              />
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">Langkah {step + 1} dari {steps.length}</p>
+        </div>
+        <DialogFooter className="sm:flex-row sm:justify-between">
+          <Button type="button" variant="ghost" onClick={finishTour}>Lewati tur</Button>
+          <div className="flex justify-end gap-2">
+            {step > 0 && (
+              <Button type="button" variant="outline" onClick={() => setStep((current) => current - 1)}>
+                Kembali
+              </Button>
+            )}
+            <Button
+              type="button"
+              onClick={() => step === steps.length - 1 ? finishTour() : setStep((current) => current + 1)}
+            >
+              {step === steps.length - 1 ? "Selesai" : "Selanjutnya"}
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -418,6 +497,7 @@ export default function App() {
       <BrowserRouter>
         <PageTitle />
         <CommandPalette />
+        <NewUserTour />
         <Toaster />
         <DemoBanner />
         <Routes>

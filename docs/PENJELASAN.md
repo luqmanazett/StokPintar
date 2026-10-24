@@ -488,6 +488,10 @@ Tema awal mengikuti preferensi terang/gelap sistem operasi dan perubahan prefere
 
 Dashboard admin dan manajer menggabungkan daftar stok di bawah batas minimum dengan peringkat produk terlaris hari ini dari endpoint yang sudah ada, lalu menampilkan maksimal lima prioritas. Jika data penjualan hari ini tidak tersedia untuk suatu produk, urutan stok yang paling jauh di bawah batas minimum menjadi penentu berikutnya. Tombol **Buat PO** membuka formulir draf pesanan pembelian yang sudah ada; tidak ada endpoint atau alur bisnis baru, dan kasir tetap hanya melihat stok serta transaksinya sendiri.
 
+## Showcase 7 — Tur pengguna baru
+
+Pada kunjungan pertama setelah login, aplikasi menampilkan tur singkat empat langkah tentang dashboard, navigasi sesuai peran, pencarian, dan cara menjelajahi fitur. Pengguna bisa maju, kembali, menyelesaikan, atau melewati tur kapan saja. Pilihan selesai atau lewati disimpan di `localStorage`, sehingga tur tidak muncul lagi pada kunjungan berikutnya di browser tersebut.
+
 ## M10 — Docker, CI, dan dokumentasi akhir
 
 ### 1. Masalah bisnis yang diselesaikan
