@@ -1,6 +1,6 @@
 # Penjelasan Modul StokPintar
 
-Dokumen ini menjelaskan modul M0 sampai M7 dengan bahasa sederhana. Setiap bagian merangkum tujuan bisnis, tabel dan hubungannya, cara fitur berjalan, bagian kode penting, penanganan kegagalan, serta contoh pertanyaan wawancara.
+Dokumen ini menjelaskan modul M0 sampai M10 dengan bahasa sederhana. Setiap bagian merangkum tujuan bisnis, tabel dan hubungannya, cara fitur berjalan, bagian kode penting, penanganan kegagalan, serta contoh pertanyaan wawancara.
 
 > Setelah modul berikutnya selesai, tambahkan bagian baru dengan enam subbagian yang sama. Sesuaikan penjelasan dengan kode dan tes yang benar-benar dibuat.
 
@@ -463,6 +463,47 @@ Barcode duplikat ditolak dengan konflik sehingga nilainya tidak menimpa produk l
    Tidak. Barcode opsional agar produk lama atau produk tanpa kode cetak tetap bisa dipakai dengan pencarian nama/SKU.
 3. **Bagaimana mencegah kode scan yang sama memilih beberapa produk?**
    Database menerapkan indeks unik, dan API memeriksa duplikasi sebelum menyimpan; barcode yang sama tidak dapat terpasang pada dua produk.
+
+## M10 — Docker, CI, dan dokumentasi akhir
+
+### 1. Masalah bisnis yang diselesaikan
+
+Menjalankan aplikasi dengan konfigurasi berbeda di setiap komputer membuat setup dan pemeriksaan perubahan lebih rentan gagal. M10 menyediakan cara menjalankan web, API, dan PostgreSQL secara konsisten lewat Docker Compose, serta menjalankan build dan tes otomatis saat kode didorong atau pull request dibuat.
+
+### 2. Tabel dan relasinya
+
+M10 tidak menambah tabel bisnis. Docker Compose menjalankan PostgreSQL dengan volume bernama `postgres_data`, sementara migrasi Prisma membuat tabel aplikasi yang dibutuhkan. Volume menyimpan data database agar tetap ada setelah container dihentikan; menghapus volume juga menghapus data tersebut.
+
+### 3. Alur langkah demi langkah saat fitur dipakai
+
+1. Pengembang memasang dan menjalankan Docker Desktop, lalu menjalankan `docker compose up --build -d` dari root repositori.
+2. Compose menunggu PostgreSQL sehat, lalu container migrasi menerapkan migrasi Prisma.
+3. Setelah migrasi berhasil, API dimulai dan memeriksa endpoint health.
+4. Web dibangun sebagai file statis dan disajikan Nginx di port lokal 8080. Nginx meneruskan request `/api` ke API, sehingga browser tidak perlu URL API terpisah.
+5. Pengembang membuka `http://localhost:8080`; data demo dapat diisi secara eksplisit memakai perintah seed yang didokumentasikan di root README.
+6. Pada push atau pull request, GitHub Actions menyiapkan PostgreSQL untuk tes, memasang dependensi dengan lockfile, menjalankan migrasi dan tes API, lalu build API, lint web, dan build web.
+
+### 4. Bagian kode yang paling penting
+
+- `docker-compose.yml` — mendefinisikan PostgreSQL, migrasi, API, web, urutan startup, health check, dan volume.
+- `api/Dockerfile` — menghasilkan Prisma Client, mengompilasi TypeScript, lalu menjalankan API sebagai pengguna non-root.
+- `web/Dockerfile` dan `web/nginx.conf` — membangun frontend dan menyajikan SPA sekaligus meneruskan API.
+- `.github/workflows/ci.yml` — menjalankan pemeriksaan otomatis di GitHub Actions.
+- `README.md` — instruksi menjalankan aplikasi, mengisi data demo, dan peringatan pengelolaan volume/secret.
+- `api/README.md` dan `docs/PENJELASAN.md` — tetap menjelaskan konfigurasi backend dan seluruh modul.
+
+### 5. Apa yang terjadi kalau ada yang gagal di tengah
+
+Jika PostgreSQL belum sehat, migrasi menunggu dan API tidak dimulai lebih dulu. Jika migrasi gagal, Compose menandai container migrasi gagal sehingga API tidak diluncurkan dengan skema yang belum siap. Jika tes, lint, atau build gagal, job CI menjadi gagal dan perubahan perlu diperbaiki sebelum dinyatakan lolos. Data tersimpan pada volume Compose; `docker compose down` mempertahankannya, sedangkan `docker compose down -v` menghapus data. Nilai secret bawaan Compose hanya untuk demo lokal dan harus diganti untuk deployment.
+
+### 6. Pertanyaan interviewer dan jawabannya
+
+1. **Mengapa memakai container migrasi terpisah dari proses API?**
+   Migrasi berjalan sekali dan harus sukses sebelum API menerima request, bukan dijalankan berulang oleh tiap instance API.
+2. **Bagaimana CI menghindari menghapus database pengembangan?**
+   Workflow membuat database PostgreSQL khusus bernama `stokpintar_test`; skrip tes juga menolak nama database lain.
+3. **Apakah data hilang saat container dihentikan?**
+   Tidak jika hanya menjalankan `docker compose down`, karena database memakai named volume. Data dihapus jika volume sengaja dihapus dengan `docker compose down -v`.
 
 ## Alur kerja berdasarkan role
 
