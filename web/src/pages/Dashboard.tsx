@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
-import { Activity, Banknote, Boxes, ChartNoAxesCombined, ReceiptText, TrendingUp } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Activity, Banknote, Boxes, ChartNoAxesCombined, PackageCheck, Plus, ReceiptText, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { api, rupiah } from "../api";
 import { PageHeader } from "@/components/page-header";
@@ -92,6 +93,7 @@ function StatCard({
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user") ?? "null") as User;
   const canViewReports = user?.role === "ADMIN" || user?.role === "MANAJER";
   const canViewSales = canViewReports || user?.role === "KASIR";
@@ -162,6 +164,14 @@ export default function Dashboard() {
 
   const dailyData = chartDays(period, dateRange(period).startDay, dailyReports);
   const recentSales = sales.slice(0, 5);
+  const topProductRank = new Map(topProducts.map((product, index) => [product.name, index]));
+  const restockRecommendations = [...lowStock]
+    .sort((first, second) => {
+      const salesOrder = (topProductRank.get(first.name) ?? Number.MAX_SAFE_INTEGER)
+        - (topProductRank.get(second.name) ?? Number.MAX_SAFE_INTEGER);
+      return salesOrder || (first.stock - first.minStock) - (second.stock - second.minStock);
+    })
+    .slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -264,6 +274,59 @@ export default function Dashboard() {
                       <p className="text-sm font-semibold text-slate-900">{product.quantity.toLocaleString("id-ID")} terjual</p>
                       <p className="text-xs text-muted-foreground">{rupiah(product.revenue)}</p>
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        )}
+
+        {canViewReports && (
+          <Card className="p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <PackageCheck className="size-5 text-indigo-600" aria-hidden="true" />
+                <div>
+                  <h2 className="font-semibold text-slate-900">Rekomendasi restock hari ini</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">Prioritas berdasarkan penjualan dan kekurangan stok.</p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => navigate("/purchases", { state: { openCreate: true } })}
+              >
+                <Plus className="size-4" aria-hidden="true" />
+                Buat PO
+              </Button>
+            </div>
+            {isLoading ? (
+              <div className="mt-4 space-y-3">
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+            ) : errors.some((error) => error.startsWith("Stok menipis")) ? (
+              <p className="mt-4 text-sm text-muted-foreground">Rekomendasi belum tersedia karena data stok gagal dimuat.</p>
+            ) : restockRecommendations.length === 0 ? (
+              <p className="mt-4 text-sm text-muted-foreground">Belum ada produk yang perlu direstock.</p>
+            ) : (
+              <div className="mt-4 divide-y">
+                {restockRecommendations.map((item, index) => (
+                  <div key={item.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-xs font-semibold text-indigo-700">
+                        {index + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-slate-800">{item.name}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {item.sku} · Sisa {item.stock} dari minimum {item.minStock}
+                        </p>
+                      </div>
+                    </div>
+                    {topProductRank.has(item.name) && <Badge variant="secondary">Terlaris hari ini</Badge>}
                   </div>
                 ))}
               </div>

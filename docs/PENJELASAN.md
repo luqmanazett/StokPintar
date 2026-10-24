@@ -484,6 +484,10 @@ Tekan **Ctrl+K** (atau **Command+K** di macOS) saat sudah login untuk membuka pa
 
 Tema awal mengikuti preferensi terang/gelap sistem operasi dan perubahan preferensi sistem diterapkan selama aplikasi terbuka. Tombol pada halaman publik, login, navigasi, dan 404 memungkinkan pengguna beralih manual; pilihan manual disimpan di `localStorage` agar tetap berlaku setelah halaman dimuat ulang. Token warna dan aturan warna bersama dipakai di seluruh tampilan sehingga konten, formulir, dialog, dan status tetap terbaca tanpa mengubah data bisnis.
 
+## Showcase 6 — Rekomendasi restock
+
+Dashboard admin dan manajer menggabungkan daftar stok di bawah batas minimum dengan peringkat produk terlaris hari ini dari endpoint yang sudah ada, lalu menampilkan maksimal lima prioritas. Jika data penjualan hari ini tidak tersedia untuk suatu produk, urutan stok yang paling jauh di bawah batas minimum menjadi penentu berikutnya. Tombol **Buat PO** membuka formulir draf pesanan pembelian yang sudah ada; tidak ada endpoint atau alur bisnis baru, dan kasir tetap hanya melihat stok serta transaksinya sendiri.
+
 ## M10 — Docker, CI, dan dokumentasi akhir
 
 ### 1. Masalah bisnis yang diselesaikan

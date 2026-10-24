@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Eye, Plus, Send, PackageCheck, Ban, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { api, rupiah } from "@/api";
@@ -78,16 +79,20 @@ function orderTotal(items: Pick<OrderItem, "qtyOrdered" | "unitCost">[]) {
 }
 
 export default function PurchaseOrders() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const currentUser = JSON.parse(localStorage.getItem("user") ?? "null") as { role?: Role } | null;
   const canManageOrders = currentUser?.role === "ADMIN" || currentUser?.role === "MANAJER";
   const canReceive = currentUser?.role === "ADMIN" || currentUser?.role === "GUDANG";
+  const routeState = location.state as { openCreate?: unknown } | null;
+  const shouldOpenCreate = canManageOrders && routeState?.openCreate === true;
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [statusFilter, setStatusFilter] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(shouldOpenCreate);
   const [editing, setEditing] = useState<PurchaseOrder | null>(null);
   const [supplierId, setSupplierId] = useState("");
   const [notes, setNotes] = useState("");
@@ -138,6 +143,12 @@ export default function PurchaseOrders() {
   useEffect(() => {
     void loadReferenceData();
   }, [loadReferenceData]);
+
+  useEffect(() => {
+    if (shouldOpenCreate) {
+      navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+    }
+  }, [location.pathname, location.search, navigate, shouldOpenCreate]);
 
   function openCreate() {
     setEditing(null);
