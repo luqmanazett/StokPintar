@@ -241,6 +241,4 @@ npm run dev
 
 Buka <http://localhost:5173>. Untuk mengisi data dan akun demo, ikuti petunjuk seed pada [api/README.md](./api/README.md). Tes API memerlukan PostgreSQL terpisah bernama `stokpintar_test` melalui `DATABASE_URL_TEST`; lihat panduan API untuk menyiapkan dan menjalankan tes. Jangan arahkan tes ke database pengembangan atau produksi.
 
-## Modul dan dokumentasi
 
-Penjelasan M0–M10, tabel yang digunakan, alur fitur, dan pertanyaan wawancara tersedia di [docs/PENJELASAN.md](./docs/PENJELASAN.md).
