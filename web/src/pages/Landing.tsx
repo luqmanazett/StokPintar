@@ -8,6 +8,7 @@ import {
   Store,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { ThemeToggle } from "@/components/theme-provider";
 
 const features = [
   {
@@ -131,13 +132,16 @@ export default function Landing() {
           </span>
           <span className="font-semibold tracking-tight text-slate-900">StokPintar</span>
         </Link>
-        <Link to="/login" className="text-sm font-medium text-slate-600 hover:text-indigo-700">
-          Masuk
-        </Link>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Link to="/login" className="text-sm font-medium text-slate-600 hover:text-indigo-700">
+            Masuk
+          </Link>
+        </div>
       </header>
 
       <section className="relative isolate px-5 pb-16 pt-14 sm:px-8 sm:pt-20 lg:pb-24 lg:pt-24">
-        <div className="absolute inset-x-0 top-0 -z-10 h-[560px] bg-gradient-to-b from-indigo-50/80 via-white to-white" />
+        <div className="landing-gradient absolute inset-x-0 top-0 -z-10 h-[560px] bg-gradient-to-b from-indigo-50/80 via-white to-white" />
         <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14">
           <div className="mx-auto max-w-xl text-center lg:mx-0 lg:text-left">
             <p className="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 shadow-sm">

@@ -1,12 +1,16 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-provider";
 
 export default function NotFound() {
   const navigate = useNavigate();
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background p-5">
+    <main className="relative flex min-h-screen items-center justify-center bg-background p-5">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
       <div className="max-w-md text-center">
         <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-indigo-600 text-white">
           <Store className="size-6" aria-hidden="true" />

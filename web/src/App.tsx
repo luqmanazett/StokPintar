@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Toaster } from "@/components/ui/sonner";
+import { ThemeProvider, ThemeToggle } from "@/components/theme-provider";
 import { api } from "./api";
 import Cashier from "./pages/Cashier";
 import Dashboard from "./pages/Dashboard";
@@ -189,6 +190,10 @@ function Sidebar({
             <p className="truncate text-sm font-medium text-slate-800">{user?.name || "Pengguna"}</p>
             <p className="text-xs text-muted-foreground">{user?.role ? roleLabels[user.role] : "Pengguna"}</p>
           </div>
+        </div>
+        <div className="flex items-center justify-between px-3 py-1">
+          <span className="text-xs text-muted-foreground">Tampilan</span>
+          <ThemeToggle />
         </div>
         <Button variant="ghost" className="mt-1 w-full justify-start text-slate-600 hover:text-red-600" onClick={onLogout}>
           <LogOut className="size-4" aria-hidden="true" />
@@ -394,6 +399,9 @@ function Layout() {
             </SheetContent>
           </Sheet>
           <span className="font-semibold tracking-tight text-slate-900">StokPintar</span>
+          <div className="ml-auto">
+            <ThemeToggle />
+          </div>
         </header>
 
         <main className="mx-auto w-full max-w-7xl p-4 sm:p-6 lg:p-8">
@@ -406,32 +414,34 @@ function Layout() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <PageTitle />
-      <CommandPalette />
-      <Toaster />
-      <DemoBanner />
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/" element={<HomeRoute />}>
-          <Route index element={<Dashboard />} />
-        </Route>
-        <Route element={<Layout />}>
-          <Route path="/products" element={<Products />} />
-          <Route path="/cashier" element={<RoleRoute roles={["ADMIN", "KASIR"]}><Cashier /></RoleRoute>} />
-          <Route path="/transactions" element={<RoleRoute roles={["ADMIN", "MANAJER", "KASIR"]}><Transactions /></RoleRoute>} />
-          <Route path="/categories" element={<RoleRoute roles={["ADMIN"]}><Categories /></RoleRoute>} />
-          <Route path="/cashier-accounts" element={<RoleRoute roles={["ADMIN"]}><CashierAccounts /></RoleRoute>} />
-          <Route path="/audit-logs" element={<RoleRoute roles={["ADMIN"]}><AuditLogs /></RoleRoute>} />
-          <Route path="/suppliers" element={<RoleRoute roles={["ADMIN", "MANAJER"]}><Suppliers /></RoleRoute>} />
-          <Route path="/purchases" element={<RoleRoute roles={["ADMIN", "MANAJER", "GUDANG"]}><PurchaseOrders /></RoleRoute>} />
-          <Route path="/stock-opnames" element={<RoleRoute roles={["ADMIN", "MANAJER", "GUDANG"]}><StockOpnames /></RoleRoute>} />
-          <Route path="/finance" element={<RoleRoute roles={["ADMIN", "MANAJER"]}><Finance /></RoleRoute>} />
-          <Route path="/analytics" element={<RoleRoute roles={["ADMIN", "MANAJER"]}><Suspense fallback={<div className="text-sm text-muted-foreground">Memuat analitik...</div>}><Analytics /></Suspense></RoleRoute>} />
-          <Route path="/integrity" element={<RoleRoute roles={["ADMIN"]}><Suspense fallback={<div className="text-sm text-muted-foreground">Memuat pemeriksaan integritas...</div>}><Integrity /></Suspense></RoleRoute>} />
-        </Route>
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <PageTitle />
+        <CommandPalette />
+        <Toaster />
+        <DemoBanner />
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<HomeRoute />}>
+            <Route index element={<Dashboard />} />
+          </Route>
+          <Route element={<Layout />}>
+            <Route path="/products" element={<Products />} />
+            <Route path="/cashier" element={<RoleRoute roles={["ADMIN", "KASIR"]}><Cashier /></RoleRoute>} />
+            <Route path="/transactions" element={<RoleRoute roles={["ADMIN", "MANAJER", "KASIR"]}><Transactions /></RoleRoute>} />
+            <Route path="/categories" element={<RoleRoute roles={["ADMIN"]}><Categories /></RoleRoute>} />
+            <Route path="/cashier-accounts" element={<RoleRoute roles={["ADMIN"]}><CashierAccounts /></RoleRoute>} />
+            <Route path="/audit-logs" element={<RoleRoute roles={["ADMIN"]}><AuditLogs /></RoleRoute>} />
+            <Route path="/suppliers" element={<RoleRoute roles={["ADMIN", "MANAJER"]}><Suppliers /></RoleRoute>} />
+            <Route path="/purchases" element={<RoleRoute roles={["ADMIN", "MANAJER", "GUDANG"]}><PurchaseOrders /></RoleRoute>} />
+            <Route path="/stock-opnames" element={<RoleRoute roles={["ADMIN", "MANAJER", "GUDANG"]}><StockOpnames /></RoleRoute>} />
+            <Route path="/finance" element={<RoleRoute roles={["ADMIN", "MANAJER"]}><Finance /></RoleRoute>} />
+            <Route path="/analytics" element={<RoleRoute roles={["ADMIN", "MANAJER"]}><Suspense fallback={<div className="text-sm text-muted-foreground">Memuat analitik...</div>}><Analytics /></Suspense></RoleRoute>} />
+            <Route path="/integrity" element={<RoleRoute roles={["ADMIN"]}><Suspense fallback={<div className="text-sm text-muted-foreground">Memuat pemeriksaan integritas...</div>}><Integrity /></Suspense></RoleRoute>} />
+          </Route>
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }

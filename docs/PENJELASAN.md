@@ -480,6 +480,10 @@ Pengunjung yang belum login akan melihat halaman depan StokPintar di `/`, sedang
 
 Tekan **Ctrl+K** (atau **Command+K** di macOS) saat sudah login untuk membuka palet pencarian. Nama halaman dicocokkan dengan menu yang memang boleh dilihat oleh peran pengguna, sedangkan pencarian produk memakai endpoint produk yang sudah ada setelah minimal dua karakter diketik. Memilih produk membuka halaman Produk dengan SKU produk tersebut sebagai kata pencarian, dan pesan kesalahan API ditampilkan langsung di palet tanpa mengubah kontrak backend.
 
+## Showcase 5 — Mode gelap
+
+Tema awal mengikuti preferensi terang/gelap sistem operasi dan perubahan preferensi sistem diterapkan selama aplikasi terbuka. Tombol pada halaman publik, login, navigasi, dan 404 memungkinkan pengguna beralih manual; pilihan manual disimpan di `localStorage` agar tetap berlaku setelah halaman dimuat ulang. Token warna dan aturan warna bersama dipakai di seluruh tampilan sehingga konten, formulir, dialog, dan status tetap terbaca tanpa mengubah data bisnis.
+
 ## M10 — Docker, CI, dan dokumentasi akhir
 
 ### 1. Masalah bisnis yang diselesaikan
