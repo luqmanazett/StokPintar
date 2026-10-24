@@ -492,6 +492,10 @@ Dashboard admin dan manajer menggabungkan daftar stok di bawah batas minimum den
 
 Pada kunjungan pertama setelah login, aplikasi menampilkan tur singkat empat langkah tentang dashboard, navigasi sesuai peran, pencarian, dan cara menjelajahi fitur. Pengguna bisa maju, kembali, menyelesaikan, atau melewati tur kapan saja. Pilihan selesai atau lewati disimpan di `localStorage`, sehingga tur tidak muncul lagi pada kunjungan berikutnya di browser tersebut.
 
+## Showcase 8 — Screenshot otomatis
+
+Perintah `npm run screenshots` dari folder `web/` memakai Playwright untuk membuka aplikasi, masuk sebagai admin demo, lalu menyimpan halaman publik, login, dashboard, dan halaman utama lainnya pada ukuran desktop serta lebar 375 piksel. Skrip menjalankan Vite sementara bila belum ada web server, tetapi API harus hidup dan database demo sudah di-seed. Kredensial dapat dioverride dengan `SCREENSHOT_EMAIL` dan `SCREENSHOT_PASSWORD`; hasil PNG disimpan ke `docs/screenshots/`.
+
 ## M10 — Docker, CI, dan dokumentasi akhir
 
 ### 1. Masalah bisnis yang diselesaikan

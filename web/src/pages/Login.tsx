@@ -55,7 +55,7 @@ export default function Login() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-background p-4">
+    <main className="relative flex min-h-screen items-center justify-center bg-background p-4">
       <div className="absolute right-4 top-4">
         <ThemeToggle />
       </div>
@@ -102,6 +102,6 @@ export default function Login() {
           )}
         </form>
       </Card>
-    </div>
+    </main>
   );
 }

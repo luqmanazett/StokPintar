@@ -2,6 +2,23 @@
 
 Sistem stok dan penjualan untuk toko kecil. Monorepo ini berisi API Express/TypeScript/Prisma di `api/`, aplikasi React/Vite di `web/`, dan dokumentasi modul di `docs/`.
 
+## Tampilan aplikasi
+
+![Beranda StokPintar versi desktop](./docs/screenshots/beranda-desktop.png)
+
+![Dashboard StokPintar versi desktop](./docs/screenshots/dashboard-desktop.png)
+
+<details>
+<summary>Pratinjau layar 375px</summary>
+
+![Beranda StokPintar versi mobile](./docs/screenshots/beranda-375px.png)
+
+![Dashboard StokPintar versi mobile](./docs/screenshots/dashboard-375px.png)
+
+</details>
+
+Screenshot seluruh halaman utama tersedia di [`docs/screenshots/`](./docs/screenshots/). Untuk membuat ulang, hidupkan API dan isi database demo, lalu jalankan `npm run screenshots` dari folder `web/`.
+
 ## Menjalankan dengan Docker
 
 Persyaratan: Docker Desktop (termasuk Docker Compose) aktif.
