@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Archive, History, PackagePlus, Pencil, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { api, rupiah } from "../api";
@@ -97,11 +98,12 @@ function stockStatus(product: Product) {
 }
 
 export default function Products() {
+  const [searchParams] = useSearchParams();
   const user = JSON.parse(localStorage.getItem("user") ?? "null") as User;
   const canManageProducts = user?.role === "ADMIN" || user?.role === "GUDANG";
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [productError, setProductError] = useState("");
@@ -145,6 +147,10 @@ export default function Products() {
   useEffect(() => {
     void loadProducts();
   }, [loadProducts]);
+
+  useEffect(() => {
+    setSearch(searchParams.get("search") ?? "");
+  }, [searchParams]);
 
   const loadCategories = useCallback(async () => {
     try {

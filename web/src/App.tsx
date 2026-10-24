@@ -17,13 +17,23 @@ import {
   ChartNoAxesCombined,
   ShieldCheck,
   Activity,
+  Search,
+  LoaderCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Toaster } from "@/components/ui/sonner";
+import { api } from "./api";
 import Cashier from "./pages/Cashier";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
@@ -53,6 +63,14 @@ type NavigationItem = {
   href: string;
   icon: LucideIcon;
   roles?: Role[];
+};
+
+type SearchProduct = {
+  id: number;
+  sku: string;
+  name: string;
+  category: string;
+  stock: number;
 };
 
 const navigation: NavigationItem[] = [
@@ -190,6 +208,159 @@ function RoleRoute({ children, roles }: { children: ReactNode; roles: Role[] }) 
   return user?.role && roles.includes(user.role) ? children : <Navigate to="/" replace />;
 }
 
+function CommandPalette() {
+  const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem("user") ?? "null") as User | null;
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [products, setProducts] = useState<SearchProduct[]>([]);
+  const [searchError, setSearchError] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const searchTerm = query.trim();
+  const matchingPages = navigation
+    .filter((item) => !item.roles || (user?.role && item.roles.includes(user.role)))
+    .filter((item) => !searchTerm || item.label.toLocaleLowerCase("id-ID").includes(searchTerm.toLocaleLowerCase("id-ID")));
+
+  useEffect(() => {
+    function handleShortcut(event: KeyboardEvent) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k" && localStorage.getItem("token")) {
+        event.preventDefault();
+        setQuery("");
+        setOpen(true);
+      }
+    }
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, []);
+
+  useEffect(() => {
+    if (!open || searchTerm.length < 2) return;
+
+    let active = true;
+    const timer = window.setTimeout(() => {
+      void api<SearchProduct[]>(`/products?search=${encodeURIComponent(searchTerm)}`)
+        .then((results) => {
+          if (active) {
+            setProducts(results);
+            setSearchError("");
+          }
+        })
+        .catch((error: unknown) => {
+          if (active) setSearchError(error instanceof Error ? error.message : "Produk tidak dapat dicari.");
+        })
+        .finally(() => {
+          if (active) setIsSearching(false);
+        });
+    }, 250);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [open, searchTerm]);
+
+  function changeQuery(value: string) {
+    setQuery(value);
+    setProducts([]);
+    setSearchError("");
+    setIsSearching(value.trim().length >= 2);
+  }
+
+  function openPage(path: string) {
+    setOpen(false);
+    navigate(path);
+  }
+
+  if (!localStorage.getItem("token")) return null;
+
+  const visiblePages = searchTerm ? matchingPages : matchingPages.slice(0, 4);
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) changeQuery("");
+      }}
+    >
+      <DialogContent className="top-[20%] max-h-[75vh] -translate-y-0 overflow-y-auto p-0 sm:top-[15%]">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Pencarian cepat</DialogTitle>
+          <DialogDescription>Cari halaman atau produk StokPintar.</DialogDescription>
+        </DialogHeader>
+        <div className="flex items-center gap-3 border-b px-4">
+          {isSearching ? (
+            <LoaderCircle className="size-4 animate-spin text-muted-foreground" aria-hidden="true" />
+          ) : (
+            <Search className="size-4 text-muted-foreground" aria-hidden="true" />
+          )}
+          <Input
+            autoFocus
+            aria-label="Cari halaman atau produk"
+            className="border-0 px-0 shadow-none focus-visible:ring-0"
+            placeholder="Cari halaman atau produk..."
+            value={query}
+            onChange={(event) => changeQuery(event.target.value)}
+          />
+          <kbd className="hidden rounded border bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-500 sm:inline">ESC</kbd>
+        </div>
+        <div className="space-y-4 p-3">
+          {visiblePages.length > 0 && (
+            <section aria-label="Halaman">
+              <p className="px-2 pb-1 text-xs font-medium text-slate-500">Halaman</p>
+              <div className="space-y-1">
+                {visiblePages.map(({ label, href, icon: Icon }) => (
+                  <button
+                    key={href}
+                    type="button"
+                    onClick={() => openPage(href)}
+                    className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700"
+                  >
+                    <Icon className="size-4" aria-hidden="true" />
+                    <span>{label}</span>
+                    <span className="ml-auto text-xs text-slate-400">{href}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+          {searchTerm.length >= 2 && (
+            <section aria-label="Produk">
+              <p className="px-2 pb-1 text-xs font-medium text-slate-500">Produk</p>
+              {searchError ? (
+                <p className="px-2 py-3 text-sm text-red-600" role="alert">{searchError}</p>
+              ) : products.length > 0 ? (
+                <div className="space-y-1">
+                  {products.map((product) => (
+                    <button
+                      key={product.id}
+                      type="button"
+                      onClick={() => openPage(`/products?search=${encodeURIComponent(product.sku)}`)}
+                      className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left hover:bg-indigo-50"
+                    >
+                      <Package className="size-4 shrink-0 text-slate-400" aria-hidden="true" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium text-slate-800">{product.name}</span>
+                        <span className="block truncate text-xs text-slate-500">{product.sku} · {product.category}</span>
+                      </span>
+                      <span className="shrink-0 text-xs text-slate-500">Stok {product.stock}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : !isSearching && !searchError ? (
+                <p className="px-2 py-3 text-sm text-slate-500">Tidak ada produk yang cocok.</p>
+              ) : null}
+            </section>
+          )}
+          {!searchTerm && (
+            <p className="px-2 text-xs text-slate-400">Ketik untuk mencari halaman atau produk. Tekan Ctrl+K untuk membuka kapan saja.</p>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function Layout() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -237,6 +408,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <PageTitle />
+      <CommandPalette />
       <Toaster />
       <DemoBanner />
       <Routes>

@@ -476,6 +476,10 @@ Saat `DEMO_MODE=true`, API menjadwalkan reset setiap hari pukul 03.00 WIB memaka
 
 Pengunjung yang belum login akan melihat halaman depan StokPintar di `/`, sedangkan pengguna yang sudah memiliki token tetap langsung melihat dashboard pada alamat yang sama. Halaman depan memperkenalkan manfaat utama melalui empat kartu fitur, pratinjau visual dashboard, dan tombol untuk menuju login demo tanpa menambah endpoint atau mengubah alur autentikasi. Tautan GitHub mengarah ke pencarian repositori StokPintar karena repositori ini belum memiliki remote GitHub yang dikonfigurasi.
 
+## Showcase 4 — Pencarian cepat
+
+Tekan **Ctrl+K** (atau **Command+K** di macOS) saat sudah login untuk membuka palet pencarian. Nama halaman dicocokkan dengan menu yang memang boleh dilihat oleh peran pengguna, sedangkan pencarian produk memakai endpoint produk yang sudah ada setelah minimal dua karakter diketik. Memilih produk membuka halaman Produk dengan SKU produk tersebut sebagai kata pencarian, dan pesan kesalahan API ditampilkan langsung di palet tanpa mengubah kontrak backend.
+
 ## M10 — Docker, CI, dan dokumentasi akhir
 
 ### 1. Masalah bisnis yang diselesaikan
